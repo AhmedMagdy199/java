@@ -1,1 +1,47 @@
+node {
+    def jdkHome = tool name: 'java-17', type: 'jdk'
+    def mavenHome = tool name: 'maven', type: 'maven'
+ 
+    properties([
+        parameters([
+            string(name: 'VERSION', defaultValue: "${env.BUILD_NUMBER}", description: 'Enter the version of the docker image'),
+            choice(name: 'TEST_SKIP', choices: ['true', 'false'], description: 'Skip tests')
+        ])
+    ])
 
+    try {
+        stage('VM Info') {
+            withEnv(["PATH+JAVA=${jdkHome}/bin", "PATH+MAVEN=${mavenHome}/bin"]) {
+                sh '''
+                    echo "Agent hostname: $(hostname)"
+                    echo "Java version:"
+                    java -version
+                    echo "Maven version:"
+                    mvn -version
+                '''
+            }
+        }
+
+        stage('Build Java App') {
+            withEnv(["PATH+JAVA=${jdkHome}/bin", "PATH+MAVEN=${mavenHome}/bin"]) {
+                sh "mvn clean package -Dmaven.test.skip=${params.TEST_SKIP}"
+            }
+        }
+
+        stage('Build and Push Docker Image') {
+            withCredentials([usernamePassword(credentialsId: 'bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
+                sh '''
+                    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker build -t ahmedmadara/java-app:${params.VERSION} .
+                    docker push ahmedmadara/java-app:${params.VERSION}
+                '''
+            }
+        }
+    } catch (err) {
+        echo 'Pipeline failed!'
+        currentBuild.result = 'FAILURE'
+        throw err
+    } finally {
+        cleanWs()
+    }
+}
