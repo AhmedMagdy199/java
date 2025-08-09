@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'java-17'
-        maven 'maven'
-    }
-
     parameters {
         string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
         choice(name: 'TEST_SKIP', choices: ['true', 'false'], description: 'Skip tests')
@@ -14,12 +9,10 @@ pipeline {
     stages {
         stage('VM Info') {
             steps {
-                script {
-                    // لو عندك دالة vmIp() 
-                    // def vmIp = vmIp()
-                    // sh "echo 'VM IP is: ${vmIp}'"
-                    echo "VM Info step - add your logic here"
-                }
+                sh '''
+                    echo "Agent hostname: $(hostname)"
+                    echo "Agent IP addresses: $(hostname -I)"
+                '''
             }
         }
 
@@ -33,7 +26,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: '38db19f1-894d-46ca-b9ef-e5309f649a32', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD}"
+                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USER} --password-stdin"
 
                         def imageName = "ahmedmadara/java-app" 
                         def imageTag = "${imageName}:${params.VERSION}"
