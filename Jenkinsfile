@@ -1,68 +1,57 @@
-@Library('libx')_
+pipeline {
+    agent any
 
-pipeline{
-    agent {
-        label 'agent-0'
-    }
-
-    tools{
-        jdk "java-8"
-    }
-
-    environment{
-        DOCKER_USER = credentials('dockerhub-user')
-        DOCKER_PASS = credentials('dockerhub-password')
+    tools {
+        jdk 'java-17'
+        maven 'maven'
     }
 
     parameters {
-        string defaultValue: '${BUILD_NUMBER}', description: 'Enter the version of the docker image', name: 'VERSION'
-        choice choices: ['true', 'false'], description: 'Skip test', name: 'TEST'
+        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
+        choice(name: 'TEST_SKIP', choices: ['true', 'false'], description: 'Skip tests')
     }
 
-    stages{
-        stage("VM info"){
-            steps{
-                script{
-                    def VM_IP = vmIp()
-                    sh "echo ${VM_IP}"
+    stages {
+        stage('VM Info') {
+            steps {
+                script {
+                    // لو عندك دالة vmIp() 
+                    // def vmIp = vmIp()
+                    // sh "echo 'VM IP is: ${vmIp}'"
+                    echo "VM Info step - add your logic here"
                 }
             }
         }
-        stage("Build java app"){
-            steps{
-                script{
-                    sayHello "ITI"
-                }
-                sh "mvn clean package install -Dmaven.test.skip=${TEST}"
+
+        stage('Build Java App') {
+            steps {
+                sh "mvn clean package -Dmaven.test.skip=${params.TEST_SKIP}"
             }
         }
-        stage("build java app image"){
-            steps{
-                script{
-                    def dockerx = new org.iti.docker()
-                    dockerx.build("java", "${VERSION}")
-                }
-                sh "docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} "
-            }
-        }
-        stage("push java app image"){
-            steps{
-                script{
-                    def dockerx = new org.iti.docker()
-                    dockerx.login("${DOCKER_USER}", "${DOCKER_PASS}")
-                    dockerx.push("${DOCKER_USER}", "${DOCKER_PASS}")
+
+        stage('Build and Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: '38db19f1-894d-46ca-b9ef-e5309f649a32', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD}"
+
+                        def imageName = "ahmedmadara/java-app" 
+                        def imageTag = "${imageName}:${params.VERSION}"
+                        sh "docker build -t ${imageTag} ."
+
+                        sh "docker push ${imageTag}"
+                    }
                 }
             }
         }
     }
 
-    post{
-        always{
-            sh "echo 'Clean the Workspace'"
+    post {
+        always {
             cleanWs()
         }
         failure {
-            sh "echo 'failed'"
+            echo 'Pipeline failed!'
         }
     }
 }
