@@ -11,6 +11,9 @@ pipeline {
                       command:
                       - cat
                       tty: true
+                      resources:
+                        requests:
+                          cpu: "250m"
                     - name: docker
                       image: docker:24.0.5-dind
                       command:
@@ -18,11 +21,17 @@ pipeline {
                       tty: true
                       securityContext:
                         privileged: true
+                      resources:
+                        requests:
+                          cpu: "250m"
                     - name: dind-sidecar
                       image: docker:24.0.5-dind
                       securityContext:
                         privileged: true
                       args: ["dockerd-entrypoint.sh"]
+                      resources:
+                        requests:
+                          cpu: "250m"
             """
         }
     }
@@ -48,7 +57,6 @@ pipeline {
 
         stage('Build Java App') {
             steps {
-                // This stage runs inside the 'maven' container
                 container('maven') {
                     sh "mvn clean package -Dmaven.test.skip=${params.TEST_SKIP}"
                 }
@@ -59,7 +67,6 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: '38db19f1-894d-46ca-b9ef-e5309f649a32', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        // This stage runs inside the 'docker' container
                         container('docker') {
                             sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USER} --password-stdin"
                             def imageName = "ahmedmadara/java-app"  
