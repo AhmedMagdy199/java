@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        jdk 'java-17'      // Your Jenkins JDK 11 tool name
-        maven 'maven'      // Your Jenkins Maven tool name
+        jdk 'java-17'      // Your Jenkins JDK 17 tool name in Global Tool Configuration
+        maven 'maven'      // Your Jenkins Maven tool name in Global Tool Configuration
     }
 
     parameters {
@@ -34,11 +34,11 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: '38db19f1-894d-46ca-b9ef-e5309f649a32', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh """
-                            echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USER} --password-stdin
-                            docker build -t ahmedmadara/java-app:${params.VERSION} .
-                            docker push ahmedmadara/java-app:${params.VERSION}
-                        """
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker build -t ahmedmadara/java-app:${VERSION} .
+                            docker push ahmedmadara/java-app:${VERSION}
+                        '''
                     }
                 }
             }
