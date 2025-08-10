@@ -1,5 +1,10 @@
 @Library('my-library@master') _
 
+import org.example.VMInfo
+import org.example.BuildJavaApp
+import org.example.BuildAndPushDocker
+import org.example.NotifyOnFailure
+
 pipeline {
     agent any
 
@@ -16,19 +21,29 @@ pipeline {
     stages {
         stage('VM Info') {
             steps {
-                vmInfo()
+                script {
+                    new VMInfo(this).run()
+                }
             }
         }
 
         stage('Build Java App') {
             steps {
-                buildJavaApp(params.TEST_SKIP)
+                script {
+                    new BuildJavaApp(this).run(params.TEST_SKIP)
+                }
             }
         }
 
         stage('Build and Push Docker Image') {
             steps {
-                buildAndPushDocker('bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc', 'ahmedmadara/java-app', params.VERSION)
+                script {
+                    new BuildAndPushDocker(this).run(
+                        'bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc',
+                        'ahmedmadara/java-app',
+                        params.VERSION
+                    )
+                }
             }
         }
     }
@@ -38,7 +53,9 @@ pipeline {
             cleanWs()
         }
         failure {
-            notifyOnFailure()
+            script {
+                new NotifyOnFailure(this).run()
+            }
         }
     }
 }
