@@ -1,4 +1,7 @@
 def call() {
+    echo "Checking out source code..."
+    checkout scm
+
     sh '''
         echo "Agent hostname: $(hostname)"
         echo "Java version:"
