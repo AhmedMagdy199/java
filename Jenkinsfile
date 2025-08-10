@@ -1,9 +1,11 @@
+@Library('my-library') _
+
 pipeline {
     agent any
 
     tools {
-        jdk 'java-17'      
-        maven 'maven'      
+        jdk 'java-17'
+        maven 'maven'
     }
 
     parameters {
@@ -14,33 +16,19 @@ pipeline {
     stages {
         stage('VM Info') {
             steps {
-                sh '''
-                    echo "Agent hostname: $(hostname)"
-                    echo "Java version:"
-                    java -version
-                    echo "Maven version:"
-                    mvn -version
-                '''
+                vmInfo()
             }
         }
 
         stage('Build Java App') {
             steps {
-                sh "mvn clean package -Dmaven.test.skip=${params.TEST_SKIP}"
+                buildJavaApp(params.TEST_SKIP)
             }
         }
 
         stage('Build and Push Docker Image') {
             steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh '''
-                            echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker build -t ahmedmadara/java-app:${VERSION} .
-                            docker push ahmedmadara/java-app:${VERSION}
-                        '''
-                    }
-                }
+                buildAndPushDocker('bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc', 'ahmedmadara/java-app', params.VERSION)
             }
         }
     }
@@ -50,7 +38,7 @@ pipeline {
             cleanWs()
         }
         failure {
-            echo 'Pipeline failed!'
+            notifyOnFailure()
         }
     }
 }
