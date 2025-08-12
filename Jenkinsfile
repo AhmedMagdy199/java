@@ -16,8 +16,6 @@ pipeline {
 
     parameters {
         string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
-        string(name: 'ARGOCD_SERVER', defaultValue: 'argocd.example.com', description: 'ArgoCD server URL')
-        string(name: 'ARGOCD_APP_NAME', defaultValue: 'my-app', description: 'ArgoCD application name')
     }
 
     stages {
@@ -41,7 +39,7 @@ pipeline {
             steps {
                 script {
                     new BuildAndPushDocker(this).run(
-                        'dockerhub',      // Replace with your actual Jenkins Docker credential ID
+                        'dockerhub',           // Your Jenkins Docker credentials ID
                         'ahmedmadara/java-app',
                         params.VERSION
                     )
@@ -53,10 +51,8 @@ pipeline {
             steps {
                 script {
                     new DeployArgoCD(this).run(
-                        params.ARGOCD_SERVER,
-                        null,           // User and password are fetched from Jenkins credentials inside DeployArgoCD
-                        null,
-                        params.ARGOCD_APP_NAME
+                        'https://192.168.56.11:31583',  // ArgoCD server URL (without trailing /app)
+                        'java-app'                      // ArgoCD app name
                     )
                 }
             }
