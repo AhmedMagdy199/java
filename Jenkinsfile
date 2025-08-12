@@ -3,6 +3,7 @@
 import org.example.VMInfo
 import org.example.BuildJavaApp
 import org.example.BuildAndPushDocker
+import org.example.DeployArgoCD
 import org.example.NotifyOnFailure
 
 pipeline {
@@ -15,7 +16,8 @@ pipeline {
 
     parameters {
         string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
-        choice(name: 'TEST_SKIP', choices: ['true', 'false'], description: 'Skip tests')
+        string(name: 'ARGOCD_SERVER', defaultValue: 'argocd.example.com', description: 'ArgoCD server URL')
+        string(name: 'ARGOCD_APP_NAME', defaultValue: 'my-app', description: 'ArgoCD application name')
     }
 
     stages {
@@ -30,7 +32,7 @@ pipeline {
         stage('Build Java App') {
             steps {
                 script {
-                    new BuildJavaApp(this).run(params.TEST_SKIP)
+                    new BuildJavaApp(this).run()
                 }
             }
         }
@@ -39,9 +41,22 @@ pipeline {
             steps {
                 script {
                     new BuildAndPushDocker(this).run(
-                        'bfe0c7aa-ba02-4e02-9f9f-0d4a071449cc',
+                        'dockerhub',      // Replace with your actual Jenkins Docker credential ID
                         'ahmedmadara/java-app',
                         params.VERSION
+                    )
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes via ArgoCD') {
+            steps {
+                script {
+                    new DeployArgoCD(this).run(
+                        params.ARGOCD_SERVER,
+                        null,           // User and password are fetched from Jenkins credentials inside DeployArgoCD
+                        null,
+                        params.ARGOCD_APP_NAME
                     )
                 }
             }
