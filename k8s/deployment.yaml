@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: java-app
-        image: ahmedmadara/java-app:g
+        image: ahmedmadara/java-app
         ports:
         - containerPort: 8080
 ---
@@ -33,5 +33,6 @@ spec:
       targetPort: 8080
   # Change the service type to NodePort to expose it outside the cluster
   type: NodePort
+
 
 
