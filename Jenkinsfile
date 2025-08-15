@@ -7,12 +7,17 @@ import org.example.DeployArgoCD
 import org.example.NotifyOnFailure
 
 pipeline {
-    agent any
-
-    tools {
-        jdk 'java-17'
-        maven 'maven'
+    agent {
+        docker {
+            image 'maven:3.8.6-openjdk-17'
+        }
     }
+
+    // Tools block is no longer needed because Java and Maven are in the Docker image
+    // tools {
+    //     jdk 'java-17'
+    //     maven 'maven'
+    // }
 
     parameters {
         string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
