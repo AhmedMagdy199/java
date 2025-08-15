@@ -80,7 +80,7 @@ pipeline {
             script {
                 new SlackNotifier(this).notify(
                     "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    credentials('slack-token-id')
+                    credentials('slack-token')
                 )
             }
         }
