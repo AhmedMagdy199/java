@@ -18,14 +18,6 @@ pipeline {
     }
 
     stages {
-        stage('VM Info and Tools Check') {
-            steps {
-                echo "Checking Java and Maven versions..."
-                sh 'java -version'
-                sh 'mvn -version'
-            }
-        }
-
         stage('Build Java App') {
             steps {
                 script {
