@@ -1,3 +1,10 @@
+@Library('my-library@master') _
+
+import org.example.BuildJavaApp
+import org.example.BuildAndPushDocker
+import org.example.DeployArgoCD
+import org.example.NotifyOnFailure
+
 pipeline {
     agent any
 
@@ -10,7 +17,7 @@ pipeline {
         JAVA_HOME = tool(name: 'java-17', type: 'jdk')
         M2_HOME   = tool(name: 'maven', type: 'maven')
         PATH      = "${tool('java-17')}/bin:${tool('maven')}/bin:${env.PATH}"
-        SONAR_TOKEN = credentials('sonarqube-token')
+        SONAR_TOKEN = credentials('sonarqube-token')  // Your SonarQube token credential ID
     }
 
     parameters {
@@ -28,7 +35,7 @@ pipeline {
             steps {
                 sh '''
                     echo "JAVA_HOME=$JAVA_HOME"
-                    echo "Maven location: $M2_HOME"
+                    echo "PATH=$PATH"
                     mvn clean package -Dmaven.test.skip=true
                 '''
             }
@@ -61,22 +68,41 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker') {
+        stage('Build and Push Docker Image') {
             steps {
-                sh "docker build -t ahmedmadara/java-app:${params.VERSION} ."
-                sh "docker push ahmedmadara/java-app:${params.VERSION}"
+                script {
+                    new BuildAndPushDocker(this).run(
+                        'dockerhub',
+                        'ahmedmadara/java-app',
+                        params.VERSION
+                    )
+                }
             }
         }
 
-        stage('Deploy via ArgoCD') {
+        stage('Deploy to Kubernetes via ArgoCD') {
             steps {
-                sh "argocd app sync java-app --grpc-web"
+                script {
+                    new DeployArgoCD(this).run(
+                        'https://github.com/AhmedMagdy199/java.git',
+                        'k8s/deployment.yaml',
+                        'ahmedmadara/java-app',
+                        params.VERSION,
+                        'argocdCred'
+                    )
+                }
             }
         }
     }
 
     post {
-        always { cleanWs() }
-        failure { echo "Pipeline failed!" }
+        always {
+            cleanWs()
+        }
+        failure {
+            script {
+                new NotifyOnFailure(this).run()
+            }
+        }
     }
 }
