@@ -7,28 +7,7 @@ import org.example.ArgoCDDeploy
 import org.example.SlackNotifier
 
 pipeline {
-    agent {
-        kubernetes {
-            cloud 'kubernetes'
-            containerTemplate {
-                name 'maven'
-                image 'maven:3.8.6-openjdk-11'
-                command 'cat'
-                tty true
-            }
-            containerTemplate {
-                name 'docker'
-                image 'docker:dind'
-                privileged true
-                volumeMounts {
-                    volumeMount {
-                        mountPath '/var/run/docker.sock'
-                        hostPath '/var/run/docker.sock'
-                    }
-                }
-            }
-        }
-    }
+    agent { label 'java-app' }
 
     environment {
         IMAGE_NAME = 'ahmedmadara/java-app'
