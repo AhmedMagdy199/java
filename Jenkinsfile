@@ -27,7 +27,7 @@ pipeline {
             }
         }
 
-        stage('Build and Package Java App') {
+        stage('Build Java App') {
             steps {
                 script {
                     // We run the build and package phase, skipping tests as they will be run in a separate stage.
@@ -64,13 +64,12 @@ pipeline {
         stage('Deploy to Kubernetes via ArgoCD') {
             steps {
                 script {
-                    // Update this call to pass the Git URL and new version number
                     new DeployArgoCD(this).run(
                         'https://github.com/AhmedMagdy199/java.git', // Your Git repository URL
                         'k8s/deployment.yaml',                   // Path to your deployment manifest
                         'ahmedmadara/java-app',                   // The Docker image name
                         params.VERSION,                           // The new image version
-                        'argocd-git'                              // The ID of your Git credentials in Jenkins
+                        'argocdCred'                              // The ID of your Git credentials in Jenkins
                     )
                 }
             }
