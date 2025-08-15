@@ -11,20 +11,24 @@ class VMInfo implements Serializable {
         script.echo "Checking out source code..."
         script.checkout script.scm
 
-        // The 'tool' step retrieves the path of the configured tools.
+        // Retrieve tool paths
         def javaHome = script.tool name: 'java-17'
         def mavenHome = script.tool name: 'maven'
 
-        // 'withEnv' is a block that sets environment variables for the shell command.
-        // We are explicitly setting JAVA_HOME, M2_HOME and updating the PATH
-        // to ensure Java and Maven are correctly found.
-        script.withEnv(["JAVA_HOME=${javaHome}", "M2_HOME=${mavenHome}", "PATH+MAVEN=${mavenHome}/bin", "PATH+JAVA=${javaHome}/bin"]) {
+        // Set environment for Java and Maven
+        script.withEnv([
+            "JAVA_HOME=${javaHome}",
+            "M2_HOME=${mavenHome}",
+            "PATH=${javaHome}/bin:${mavenHome}/bin:${script.env.PATH}"
+        ]) {
             script.sh '''
                 echo "Agent hostname: $(hostname)"
                 echo "Java version:"
                 java -version
                 echo "Maven version:"
                 mvn -version
+                echo "Building project..."
+                mvn clean package -Dmaven.test.skip=true
             '''
         }
     }
