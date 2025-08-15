@@ -7,12 +7,17 @@ import org.example.ArgoCDDeploy
 import org.example.SlackNotifier
 
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'docker:dind'
+            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         IMAGE_NAME = 'ahmedmadara/java-app'
         IMAGE_VERSION = "${BUILD_NUMBER}"
-        SONAR_TOKEN = 'sonarqube-token' // keep as-is if hardcoded
+        SONAR_TOKEN = 'sonarqube-token'
     }
 
     stages {
@@ -20,7 +25,6 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    // Pass your Jenkins Docker Hub credentials ID here
                     new BuildAndPushDocker(this).run('5ba0c530-1d43-4d52-b28c-03b368f8fb73', IMAGE_NAME, IMAGE_VERSION)
                 }
             }
@@ -60,7 +64,7 @@ pipeline {
                         'k8s/deployment.yaml',
                         IMAGE_NAME,
                         IMAGE_VERSION,
-                        'argocdCred' // keep your existing ArgoCD credential ID
+                        'argocdCred'
                     )
                 }
             }
@@ -71,16 +75,16 @@ pipeline {
         success {
             script {
                 new SlackNotifier(this).notify(
-                    "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}", 
-                    credentials('slack-token-id') // Slack secret text
+                    "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    credentials('slack-token-id')
                 )
             }
         }
         failure {
             script {
                 new SlackNotifier(this).notify(
-                    "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}", 
-                    credentials('slack-token-id') // Slack secret text
+                    "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    credentials('slack-token-id')
                 )
             }
         }
