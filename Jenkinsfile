@@ -1,82 +1,67 @@
 @Library('my-library@master') _
 
-import org.example.BuildAndPushDocker
-import org.example.DeployArgoCD
-import org.example.NotifyOnFailure
-import org.example.VMInfo
+import org.example.DockerBuildPush
+import org.example.SonarQube
+import org.example.QualityGate
+import org.example.ArgoCDDeploy
+import org.example.SlackNotifier
 
 pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub'   // DockerHub Jenkins credential ID
-        SONARQUBE_CREDENTIALS = 'sonarqube-token' // SonarQube token ID in Jenkins
-        SLACK_CREDENTIALS = 'slack-webhook-id'    // Slack Jenkins credential
-    }
-
-    parameters {
-        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Docker image tag/version')
+        DOCKER_USERNAME = credentials('dockerhub-username')
+        DOCKER_PASSWORD = credentials('dockerhub-password')
+        SONAR_TOKEN = 'sonarqube-token'
+        SLACK_TOKEN = 'slack-token'
+        IMAGE_NAME = 'ahmedmadara/java-app'
+        IMAGE_VERSION = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Prepare Environment') {
-            steps {
-                script {
-                    // Setup Java/Maven inside the agent if needed
-                    new VMInfo(this).run()
-                }
-            }
-        }
 
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    new BuildAndPushDocker(this).run(
-                        DOCKERHUB_CREDENTIALS,
-                        'ahmedmadara/java-app',
-                        params.VERSION
-                    )
+                    new DockerBuildPush(this).run(IMAGE_NAME, IMAGE_VERSION)
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh """
-                        mvn clean verify sonar:sonar \
-                        -Dsonar.projectKey=java-app \
-                        -Dsonar.host.url=http://192.168.1.22:31000 \
-                        -Dsonar.login=${SONARQUBE_CREDENTIALS}
-                    """
+                script {
+                    new SonarQube(this).run('java-app', 'Java App', SONAR_TOKEN)
                 }
             }
         }
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                script {
+                    new QualityGate(this).run()
                 }
             }
         }
 
-        stage('OWASP / Image Scan') {
+        stage('OWASP Trivy Scan') {
             steps {
-                sh """
-                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ahmedmadara/java-app:${params.VERSION}
-                """
+                script {
+                    sh """
+                        trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_VERSION}
+                    """
+                }
             }
         }
 
         stage('Deploy via ArgoCD') {
             steps {
                 script {
-                    new DeployArgoCD(this).run(
+                    new ArgoCDDeploy(this).run(
                         'https://github.com/AhmedMagdy199/java.git',
                         'k8s/deployment.yaml',
-                        'ahmedmadara/java-app',
-                        params.VERSION,
+                        IMAGE_NAME,
+                        IMAGE_VERSION,
                         'argocdCred'
                     )
                 }
@@ -86,12 +71,13 @@ pipeline {
 
     post {
         success {
-            slackSend(channel: '#devops', color: 'good', message: "Pipeline SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+            script {
+                new SlackNotifier(this).notify("Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}", SLACK_TOKEN)
+            }
         }
         failure {
             script {
-                new NotifyOnFailure(this).run()
-                slackSend(channel: '#devops', color: 'danger', message: "Pipeline FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
+                new SlackNotifier(this).notify("Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}", SLACK_TOKEN)
             }
         }
         always {
@@ -99,3 +85,4 @@ pipeline {
         }
     }
 }
+
