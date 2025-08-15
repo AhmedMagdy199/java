@@ -1,49 +1,42 @@
 @Library('my-library@master') _
 
-import org.example.BuildJavaApp
 import org.example.BuildAndPushDocker
 import org.example.DeployArgoCD
 import org.example.NotifyOnFailure
+import org.example.VMInfo
 
 pipeline {
     agent any
 
-    tools {
-        jdk 'java-17'
-        maven 'maven'
-    }
-
     environment {
-        JAVA_HOME = tool(name: 'java-17', type: 'jdk')
-        M2_HOME   = tool(name: 'maven', type: 'maven')
-        PATH      = "${tool('java-17')}/bin:${tool('maven')}/bin:${env.PATH}"
-        SONAR_TOKEN = credentials('sonarqube-token')  // Your SonarQube token credential ID
+        DOCKERHUB_CREDENTIALS = 'dockerhub'   // DockerHub Jenkins credential ID
+        SONARQUBE_CREDENTIALS = 'sonarqube-token' // SonarQube token ID in Jenkins
+        SLACK_CREDENTIALS = 'slack-webhook-id'    // Slack Jenkins credential
     }
 
     parameters {
-        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Docker image version')
+        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Docker image tag/version')
     }
 
     stages {
-        stage('Checkout') {
+        stage('Prepare Environment') {
             steps {
-                checkout scm
+                script {
+                    // Setup Java/Maven inside the agent if needed
+                    new VMInfo(this).run()
+                }
             }
         }
 
-        stage('Build Java App') {
+        stage('Build & Push Docker Image') {
             steps {
-                sh '''
-                    echo "JAVA_HOME=$JAVA_HOME"
-                    echo "PATH=$PATH"
-                    mvn clean package -Dmaven.test.skip=true
-                '''
-            }
-        }
-
-        stage('Test Java App') {
-            steps {
-                sh 'mvn test'
+                script {
+                    new BuildAndPushDocker(this).run(
+                        DOCKERHUB_CREDENTIALS,
+                        'ahmedmadara/java-app',
+                        params.VERSION
+                    )
+                }
             }
         }
 
@@ -51,10 +44,10 @@ pipeline {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh """
-                        mvn sonar:sonar \
+                        mvn clean verify sonar:sonar \
                         -Dsonar.projectKey=java-app \
                         -Dsonar.host.url=http://192.168.1.22:31000 \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.login=${SONARQUBE_CREDENTIALS}
                     """
                 }
             }
@@ -68,19 +61,15 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('OWASP / Image Scan') {
             steps {
-                script {
-                    new BuildAndPushDocker(this).run(
-                        'dockerhub',
-                        'ahmedmadara/java-app',
-                        params.VERSION
-                    )
-                }
+                sh """
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ahmedmadara/java-app:${params.VERSION}
+                """
             }
         }
 
-        stage('Deploy to Kubernetes via ArgoCD') {
+        stage('Deploy via ArgoCD') {
             steps {
                 script {
                     new DeployArgoCD(this).run(
@@ -96,13 +85,17 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
+        success {
+            slackSend(channel: '#devops', color: 'good', message: "Pipeline SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
         }
         failure {
             script {
                 new NotifyOnFailure(this).run()
+                slackSend(channel: '#devops', color: 'danger', message: "Pipeline FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
             }
+        }
+        always {
+            cleanWs()
         }
     }
 }
