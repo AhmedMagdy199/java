@@ -1,6 +1,6 @@
 @Library('my-library@master') _
 
-import org.example.DockerBuildPush
+import org.example.BuildAndPushDocker
 import org.example.SonarQube
 import org.example.QualityGate
 import org.example.ArgoCDDeploy
@@ -10,10 +10,6 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USERNAME = credentials('dockerhub-username')
-        DOCKER_PASSWORD = credentials('dockerhub-password')
-        SONAR_TOKEN = 'sonarqube-token'
-        SLACK_TOKEN = 'slack-token'
         IMAGE_NAME = 'ahmedmadara/java-app'
         IMAGE_VERSION = "${BUILD_NUMBER}"
     }
@@ -23,7 +19,7 @@ pipeline {
         stage('Build & Push Docker Image') {
             steps {
                 script {
-                    new DockerBuildPush(this).run(IMAGE_NAME, IMAGE_VERSION)
+                    new BuildAndPushDocker(this).run('docker-hub-cred-id', IMAGE_NAME, IMAGE_VERSION)
                 }
             }
         }
@@ -31,7 +27,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    new SonarQube(this).run('java-app', 'Java App', SONAR_TOKEN)
+                    new SonarQube(this).run('java-app', 'Java App', 'sonar-token-id')
                 }
             }
         }
@@ -62,7 +58,7 @@ pipeline {
                         'k8s/deployment.yaml',
                         IMAGE_NAME,
                         IMAGE_VERSION,
-                        'argocdCred'
+                        'argocd-cred-id'
                     )
                 }
             }
@@ -72,12 +68,12 @@ pipeline {
     post {
         success {
             script {
-                new SlackNotifier(this).notify("Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}", SLACK_TOKEN)
+                new SlackNotifier(this).notify("Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}", 'slack-token-id')
             }
         }
         failure {
             script {
-                new SlackNotifier(this).notify("Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}", SLACK_TOKEN)
+                new SlackNotifier(this).notify("Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}", 'slack-token-id')
             }
         }
         always {
@@ -85,4 +81,3 @@ pipeline {
         }
     }
 }
-
