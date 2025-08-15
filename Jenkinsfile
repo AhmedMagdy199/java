@@ -27,10 +27,24 @@ pipeline {
             }
         }
 
-        stage('Build Java App') {
+        stage('Build and Package Java App') {
             steps {
                 script {
-                    new BuildJavaApp(this).run()
+                    // We run the build and package phase, skipping tests as they will be run in a separate stage.
+                    new BuildJavaApp(this).run(
+                        'true'
+                    )
+                }
+            }
+        }
+
+        stage('Test Java App') {
+            steps {
+                script {
+                    // This stage specifically runs the tests.
+                    new BuildJavaApp(this).run(
+                        'false'
+                    )
                 }
             }
         }
@@ -39,7 +53,7 @@ pipeline {
             steps {
                 script {
                     new BuildAndPushDocker(this).run(
-                        'dockerhub',           // Your Jenkins Docker credentials ID
+                        'dockerhub',
                         'ahmedmadara/java-app',
                         params.VERSION
                     )
@@ -50,9 +64,13 @@ pipeline {
         stage('Deploy to Kubernetes via ArgoCD') {
             steps {
                 script {
+                    // Update this call to pass the Git URL and new version number
                     new DeployArgoCD(this).run(
-                        'https://192.168.56.11:31583',  // ArgoCD server URL (without trailing /app)
-                        'java-app'                      // ArgoCD app name
+                        'https://github.com/AhmedMagdy199/java.git', // Your Git repository URL
+                        'k8s/deployment.yaml',                   // Path to your deployment manifest
+                        'ahmedmadara/java-app',                   // The Docker image name
+                        params.VERSION,                           // The new image version
+                        'argocd-git'                              // The ID of your Git credentials in Jenkins
                     )
                 }
             }
