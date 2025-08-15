@@ -11,6 +11,12 @@ pipeline {
         kubernetes {
             cloud 'kubernetes'
             containerTemplate {
+                name 'maven'
+                image 'maven:3.8.6-openjdk-11'
+                command 'cat'
+                tty true
+            }
+            containerTemplate {
                 name 'docker'
                 image 'docker:dind'
                 privileged true
@@ -31,6 +37,12 @@ pipeline {
     }
 
     stages {
+        stage('Build with Maven') {
+            agent { container 'maven' }
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
 
         stage('Build & Push Docker Image') {
             steps {
@@ -60,7 +72,7 @@ pipeline {
 
         stage('OWASP Trivy Scan') {
             steps {
-                script {
+                container('docker') {
                     sh """
                         trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_VERSION}
                     """
