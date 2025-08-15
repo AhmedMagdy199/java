@@ -33,10 +33,11 @@ pipeline {
     stages {
 
         stage('Build & Push Docker Image') {
-            agent { container 'docker' } // Specify which container to run the steps in
             steps {
-                script {
-                    new BuildAndPushDocker(this).run('5ba0c530-1d43-4d52-b28c-03b368f8fb73', IMAGE_NAME, IMAGE_VERSION)
+                container('docker') {
+                    script {
+                        new BuildAndPushDocker(this).run('5ba0c530-1d43-4d52-b28c-03b368f8fb73', IMAGE_NAME, IMAGE_VERSION)
+                    }
                 }
             }
         }
