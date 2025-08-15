@@ -1,6 +1,5 @@
 @Library('my-library@master') _
 
-import org.example.VMInfo
 import org.example.BuildJavaApp
 import org.example.BuildAndPushDocker
 import org.example.DeployArgoCD
@@ -19,18 +18,17 @@ pipeline {
     }
 
     stages {
-        stage('VM Info') {
+        stage('VM Info and Tools Check') {
             steps {
-                script {
-                    new VMInfo(this).run()
-                }
+                echo "Checking Java and Maven versions..."
+                sh 'java -version'
+                sh 'mvn -version'
             }
         }
 
         stage('Build Java App') {
             steps {
                 script {
-                    // We run the build and package phase, skipping tests as they will be run in a separate stage.
                     new BuildJavaApp(this).run(
                         'true'
                     )
@@ -41,7 +39,6 @@ pipeline {
         stage('Test Java App') {
             steps {
                 script {
-                    // This stage specifically runs the tests.
                     new BuildJavaApp(this).run(
                         'false'
                     )
