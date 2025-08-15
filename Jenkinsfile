@@ -1,10 +1,3 @@
-@Library('my-library@master') _
-
-import org.example.BuildJavaApp
-import org.example.BuildAndPushDocker
-import org.example.DeployArgoCD
-import org.example.NotifyOnFailure
-
 pipeline {
     agent any
 
@@ -14,17 +7,18 @@ pipeline {
     }
 
     environment {
-        SONARQUBE_SERVER = 'sonarqube'              // Must match your Jenkins SonarQube configuration name
-        SONAR_TOKEN = credentials('sonarqube-token') // Jenkins secret text credential containing SonarQube token
+        JAVA_HOME = tool(name: 'java-17', type: 'jdk')
+        M2_HOME   = tool(name: 'maven', type: 'maven')
+        PATH      = "${tool('java-17')}/bin:${tool('maven')}/bin:${env.PATH}"
+        SONAR_TOKEN = credentials('sonarqube-token')
     }
 
     parameters {
-        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Enter the version of the docker image')
+        string(name: 'VERSION', defaultValue: "${BUILD_NUMBER}", description: 'Docker image version')
     }
 
     stages {
-
-        stage('Checkout Source') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
@@ -32,31 +26,29 @@ pipeline {
 
         stage('Build Java App') {
             steps {
-                script {
-                    new BuildJavaApp(this).run('true') // skip tests
-                }
+                sh '''
+                    echo "JAVA_HOME=$JAVA_HOME"
+                    echo "Maven location: $M2_HOME"
+                    mvn clean package -Dmaven.test.skip=true
+                '''
             }
         }
 
         stage('Test Java App') {
             steps {
-                script {
-                    new BuildJavaApp(this).run('false') // run tests
-                }
+                sh 'mvn test'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                        sh """
-                            mvn clean verify sonar:sonar \
-                            -Dsonar.projectKey=java-app \
-                            -Dsonar.host.url=http://192.168.1.22:31000 \
-                            -Dsonar.login=${SONAR_TOKEN}
-                        """
-                    }
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=java-app \
+                        -Dsonar.host.url=http://192.168.1.22:31000 \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
@@ -69,41 +61,22 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('Build and Push Docker') {
             steps {
-                script {
-                    new BuildAndPushDocker(this).run(
-                        'dockerhub',                   // Docker registry type
-                        'ahmedmadara/java-app',        // Docker image name
-                        params.VERSION                 // Docker image tag
-                    )
-                }
+                sh "docker build -t ahmedmadara/java-app:${params.VERSION} ."
+                sh "docker push ahmedmadara/java-app:${params.VERSION}"
             }
         }
 
-        stage('Deploy to Kubernetes via ArgoCD') {
+        stage('Deploy via ArgoCD') {
             steps {
-                script {
-                    new DeployArgoCD(this).run(
-                        'https://github.com/AhmedMagdy199/java.git', // Git repo
-                        'k8s/deployment.yaml',                        // Kubernetes manifest path
-                        'ahmedmadara/java-app',                        // Docker image name
-                        params.VERSION,                                // Docker image version
-                        'argocdCred'                                  // Jenkins credentials ID for Git if required
-                    )
-                }
+                sh "argocd app sync java-app --grpc-web"
             }
         }
     }
 
     post {
-        always {
-            cleanWs()
-        }
-        failure {
-            script {
-                new NotifyOnFailure(this).run()
-            }
-        }
+        always { cleanWs() }
+        failure { echo "Pipeline failed!" }
     }
 }
