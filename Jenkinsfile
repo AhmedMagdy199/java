@@ -38,9 +38,10 @@ pipeline {
 
     stages {
         stage('Build with Maven') {
-            agent { container 'maven' }
             steps {
-                sh 'mvn clean package -DskipTests'
+                container('maven') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
