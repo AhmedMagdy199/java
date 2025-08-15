@@ -8,9 +8,19 @@ import org.example.SlackNotifier
 
 pipeline {
     agent {
-         dockerContainer {
-            image 'docker:dind'
-            args '--privileged -v /var/run/docker.sock:/var/run/docker.sock'
+        kubernetes {
+            cloud 'kubernetes'
+            containerTemplate {
+                name 'docker'
+                image 'docker:dind'
+                privileged true
+                volumeMounts {
+                    volumeMount {
+                        mountPath '/var/run/docker.sock'
+                        hostPath '/var/run/docker.sock'
+                    }
+                }
+            }
         }
     }
 
@@ -23,6 +33,7 @@ pipeline {
     stages {
 
         stage('Build & Push Docker Image') {
+            agent { container 'docker' } // Specify which container to run the steps in
             steps {
                 script {
                     new BuildAndPushDocker(this).run('5ba0c530-1d43-4d52-b28c-03b368f8fb73', IMAGE_NAME, IMAGE_VERSION)
@@ -76,7 +87,7 @@ pipeline {
             script {
                 new SlackNotifier(this).notify(
                     "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    credentials('slack-token')
+                    credentials('slack-token-id')
                 )
             }
         }
