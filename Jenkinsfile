@@ -8,7 +8,7 @@ import org.example.NotifyOnFailure
 
 pipeline {
     agent {
-        docker {
+        dockerContainer {
             image 'maven:3.8.6-openjdk-17'
         }
     }
