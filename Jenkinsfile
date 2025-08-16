@@ -89,20 +89,46 @@ pipeline {
 }
 
 
-        stage('Build & Push Docker Image') {
-            steps {
-                container('docker') {
-                    script {
-                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.BuildAndPushDocker(this).run(
-                            'nexus-docker-cred',
-                            "${IMAGE_REPO}/${IMAGE_NAME}",
-                            IMAGE_VERSION
-                        )
-                    }
+        stage('Build & Push Docker Image to Docker Hub') {
+    steps {
+        container('docker') {
+            script {
+                def imageTag = "${IMAGE_NAME}:${IMAGE_VERSION}"
+                def fullImage = "docker.io/ahmedmadara/${imageTag}"
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh """
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker build -t ${fullImage} .
+                        docker push ${fullImage}
+                    """
                 }
             }
         }
+    }
+}
+
+        stage('Build & Push Docker Image to Nexus') {
+    steps {
+        container('docker') {
+            script {
+                // Full image name including Nexus registry
+                def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
+
+                // Use the DockerBuildPush class
+                new org.example.DockerBuildPush(this).run(
+                    'nexus-docker-cred', // Jenkins credentials for Nexus
+                    nexusImage,
+                    IMAGE_VERSION
+                )
+            }
+        }
+    }
+}
 
         stage('Security Scan') {
             steps {
