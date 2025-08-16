@@ -60,7 +60,7 @@ stage('SonarQube Analysis') {
 
         //--------------------------------------------------------------------------------------------------
 
-        stage('Quality Gate') {
+     stage('Quality Gate') {
             steps {
                 script {
                     echo "=== Checking SonarQube Quality Gate ==="
