@@ -39,22 +39,25 @@ pipeline {
 
         //--------------------------------------------------------------------------------------------------
 
-        stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    script {
-                        echo "=== Running SonarQube Analysis via Maven Plugin ==="
-                        sh """
-                            mvn clean verify sonar:sonar \
-                              -Dsonar.projectKey=${PROJECT_KEY} \
-                              -Dsonar.host.url=http://192.168.1.22:31000 \
-                              -Dsonar.token=${SONAR_TOKEN} \
-                              -Dsonar.java.binaries=target/classes
-                        """
-                    }
+stage('SonarQube Analysis') {
+    steps {
+        container('maven') {
+            script {
+                echo "=== Running SonarQube Analysis via Maven Plugin ==="
+                withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'TOKEN')]) {
+                    sh """
+                        mvn clean verify sonar:sonar \
+                          -Dsonar.projectKey=${PROJECT_KEY} \
+                          -Dsonar.host.url=http://192.168.1.22:31000 \
+                          -Dsonar.token=$TOKEN \
+                          -Dsonar.java.binaries=target/classes
+                    """
                 }
             }
-        }  
+        }
+    }
+}
+
 
         //--------------------------------------------------------------------------------------------------
 
