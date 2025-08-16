@@ -94,7 +94,7 @@ pipeline {
                 container('docker') {
                     script {
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.DockerBuildPush(this).run(
+                        new org.example.BuildAndPushDocker(this).run(
                             'nexus-docker-cred',
                             "${IMAGE_REPO}/${IMAGE_NAME}",
                             IMAGE_VERSION
