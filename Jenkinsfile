@@ -10,35 +10,18 @@ pipeline {
     agent { label 'java-app' }
 
     environment {
-        IMAGE_NAME = 'ahmedmadara/java-app'
+        // Use your Nexus repository address as the base for all image names
+        IMAGE_REPO = '192.168.1.22:31565/my-repo'
+        IMAGE_NAME = 'maven-sonar-cli'
         IMAGE_VERSION = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Build with Maven') {
+        stage('Build with Maven & SonarQube Analysis') {
             steps {
-                container('maven') {
+                container('maven') { // This container uses your custom image
                     sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
-        stage('Build & Push Docker Image') {
-            steps {
-                container('docker') {
                     script {
-                        new BuildAndPushDocker(this).run('5ba0c530-1d43-4d52-b28c-03b368f8fb73', IMAGE_NAME, IMAGE_VERSION)
-                    }
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    script {
-                        // FIX: Pass the credential ID directly to the shared library class.
-                        // Your shared library's `withCredentials` block expects a credential ID.
                         new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
                     }
                 }
@@ -53,13 +36,21 @@ pipeline {
             }
         }
 
+        stage('Build & Push Final Docker Image') {
+            steps {
+                script {
+                    // Use the nexus-docker-cred for authentication
+                    new BuildAndPushDocker(this).run('nexus-docker-cred', "${IMAGE_REPO}/${IMAGE_NAME}", IMAGE_VERSION)
+                }
+            }
+        }
+
         stage('OWASP Trivy Scan') {
             steps {
-                container('docker') {
-                    sh """
-                        trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_NAME}:${IMAGE_VERSION}
-                    """
-                }
+                // Use the correct image path from your Nexus registry
+                sh """
+                    trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}
+                """
             }
         }
 
@@ -69,7 +60,7 @@ pipeline {
                     new ArgoCDDeploy(this).run(
                         'https://github.com/AhmedMagdy199/java.git',
                         'k8s/deployment.yaml',
-                        IMAGE_NAME,
+                        "${IMAGE_REPO}/${IMAGE_NAME}", // Use the new image name from Nexus
                         IMAGE_VERSION,
                         'argocdCred'
                     )
