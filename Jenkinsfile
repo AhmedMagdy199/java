@@ -30,6 +30,28 @@ pipeline {
             }
         }
 
+        stage('Setup Environment') {
+            steps {
+                container('maven') {
+                    script {
+                        def javaHome = tool name: 'java-17'
+                        def mavenHome = tool name: 'maven'
+                        withEnv([
+                            "JAVA_HOME=${javaHome}",
+                            "M2_HOME=${mavenHome}",
+                            "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
+                        ]) {
+                            sh '''
+                                echo "=== Environment Verification ==="
+                                java -version
+                                mvn -version
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 container('maven') {
@@ -40,20 +62,19 @@ pipeline {
             }
         }
 
-        // DEBUG STAGE ADDED HERE
         stage('Verify SonarQube Config') {
             steps {
                 script {
                     try {
                         def servers = Jenkins.instance.getDescriptor('hudson.plugins.sonar.SonarGlobalConfiguration').getInstallations()
-                        echo "=== DEBUG: Configured SonarQube servers ==="
-                        echo servers*.name.join("\n")
+                        echo "=== SonarQube Server Configuration ==="
+                        echo "Available servers: ${servers*.name}"
                         assert servers.any { it.name == 'sonar' }, 
-                            "ERROR: No SonarQube server named 'sonar' found. Configure it in:\n" +
-                            "Jenkins → Manage Jenkins → Configure System → SonarQube servers"
+                            "ERROR: Missing SonarQube server 'sonar'.\n" +
+                            "Configure at: Jenkins → Manage Jenkins → Configure System → SonarQube servers"
+                        echo "✓ Valid SonarQube configuration found"
                     } catch (Exception e) {
-                        error "DEBUG FAILED: ${e.message}\n" +
-                              "Is the SonarQube plugin installed?"
+                        error "CONFIGURATION ERROR: ${e.message}"
                     }
                 }
             }
@@ -66,6 +87,7 @@ pipeline {
                         withSonarQubeEnv('sonar') {
                             withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN']) {
                                 sh """
+                                    echo "=== Starting SonarQube Analysis ==="
                                     mvn sonar:sonar \
                                       -Dsonar.projectKey=${PROJECT_KEY} \
                                       -Dsonar.projectName=${PROJECT_NAME} \
@@ -90,8 +112,70 @@ pipeline {
             }
         }
 
-        // ... rest of your stages (Docker build, Trivy scan, ArgoCD deploy) ...
+        stage('Build & Push Docker Image') {
+            steps {
+                container('docker') {
+                    script {
+                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
+                        new org.example.DockerBuildPush(this).run(
+                            'nexus-docker-cred',
+                            "${IMAGE_REPO}/${IMAGE_NAME}",
+                            IMAGE_VERSION
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Security Scan') {
+            steps {
+                container('docker') {
+                    script {
+                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
+                        sh """
+                            echo "=== Running Trivy Scan ==="
+                            trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy via ArgoCD') {
+            when {
+                expression { return currentBuild.result == 'SUCCESS' }
+            }
+            steps {
+                script {
+                    new org.example.DeployArgoCD(this).run(
+                        ARGOCD_SERVER,
+                        'java-app'
+                    )
+                }
+            }
+        }
     }
 
-    // ... post section ...
+    post {
+        success {
+            script {
+                new org.example.SlackNotifier(this).notify(
+                    "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    SLACK_CREDS
+                )
+            }
+        }
+        failure {
+            script {
+                new org.example.SlackNotifier(this).notify(
+                    "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    SLACK_CREDS
+                )
+                new org.example.NotifyOnFailure(this).run()
+            }
+        }
+        always {
+            cleanWs()
+        }
+    }
 }
