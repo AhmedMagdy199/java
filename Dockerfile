@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM maven:3.9.6-openjdk-11 AS build
+FROM eclipse-temurin:11-jdk-alpine AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline
