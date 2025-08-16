@@ -36,8 +36,10 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    new SonarQube(this).run('java-app', 'Java App', SONAR_TOKEN)
+                container('maven') {
+                    script {
+                        new SonarQube(this).run('java-app', 'Java App', SONAR_TOKEN)
+                    }
                 }
             }
         }
@@ -78,18 +80,22 @@ pipeline {
     post {
         success {
             script {
-                new SlackNotifier(this).notify(
-                    "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    credentials('slack-token')
-                )
+                withCredentials([string(credentialsId: 'slack-token', variable: 'slackToken')]) {
+                    new SlackNotifier(this).notify(
+                        "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        "${slackToken}"
+                    )
+                }
             }
         }
         failure {
             script {
-                new SlackNotifier(this).notify(
-                    "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    credentials('slack-token-id')
-                )
+                withCredentials([string(credentialsId: 'slack-token-id', variable: 'slackTokenId')]) {
+                    new SlackNotifier(this).notify(
+                        "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        "${slackTokenId}"
+                    )
+                }
             }
         }
         always {
