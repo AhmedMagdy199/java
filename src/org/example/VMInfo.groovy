@@ -8,15 +8,13 @@ class VMInfo implements Serializable {
     }
 
     void run() {
-        // Checkout source code
-        script.echo "Checking out source code..."
-        script.checkout script.scm
-
-        // Retrieve tool paths
+        script.echo "Setting up build environment..."
+        
+        // Get tool installations
         def javaHome = script.tool name: 'java-17'
         def mavenHome = script.tool name: 'maven'
 
-        // Set environment for Java and Maven
+        // Set environment variables
         script.withEnv([
             "JAVA_HOME=${javaHome}",
             "M2_HOME=${mavenHome}",
@@ -28,8 +26,6 @@ class VMInfo implements Serializable {
                 java -version
                 echo "Maven version:"
                 mvn -version
-                echo "Building project..."
-                mvn clean package -Dmaven.test.skip=true
             '''
         }
     }
