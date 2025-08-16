@@ -46,6 +46,7 @@ pipeline {
             steps {
                 container('maven') {
                     script {
+                         sh 'java -version'
                         echo "=== Running SonarQube Analysis ==="
                         // Run analysis on the project and publish to SonarQube server
                         new SonarQube(this).run(
