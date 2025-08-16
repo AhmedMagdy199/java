@@ -3,7 +3,7 @@
 import org.example.BuildJavaApp
 import org.example.SonarQube
 import org.example.QualityGate
-import org.example.DockerBuildPush
+import org.example.BuildAndPushDocker
 import org.example.ArgoCDDeploy
 import org.example.SlackNotifier
 
