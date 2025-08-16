@@ -43,22 +43,16 @@ pipeline {
         //--------------------------------------------------------------------------------------------------
 
         stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    script {
-                         sh 'java -version'
-                        echo "=== Running SonarQube Analysis ==="
-                        // Run analysis on the project and publish to SonarQube server
-                        new SonarQube(this).run(
-                            PROJECT_KEY,
-                            PROJECT_NAME,
-                            SONAR_TOKEN
-                        )
-                    }
-                }
+    steps {
+        container('maven') {
+            script {
+                echo "=== Running SonarQube Analysis via Maven Plugin ==="
+                // This command runs the SonarQube analysis as part of the Maven build
+                sh "mvn clean verify sonar:sonar -Dsonar.projectKey=${PROJECT_KEY} -Dsonar.host.url=http://192.168.1.22:31000 -Dsonar.login=${SONAR_TOKEN}"
             }
         }
-        
+    }
+}  
         //--------------------------------------------------------------------------------------------------
 
         stage('Quality Gate') {
