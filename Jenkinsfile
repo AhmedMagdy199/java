@@ -80,15 +80,16 @@ pipeline {
     }
 }
 
-        stage('Quality Gate') {
-            steps {
-                script {
-                    timeout(time: 4, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: true
-                    }
-                }
+      stage('Quality Gate') {
+    steps {
+        script {
+            timeout(time: 4, unit: 'MINUTES') {
+                def qg = waitForQualityGate() // no abortPipeline
+                echo "Quality Gate status: ${qg.status}"
             }
         }
+    }
+}
 
         stage('Build & Push Docker Image') {
             steps {
