@@ -8,24 +8,23 @@ class DockerBuildPush implements Serializable {
     }
 
     /**
-     * Build and push a container image using Podman inside a Kubernetes pod.
+     * Build and push a container image using Docker.
      *
      * @param dockerCredId - Jenkins credentials ID for container registry (username/password)
-     * @param imageName    - Full image name including registry (e.g., docker.io/user/app)
+     * @param imageName    - Full image name including registry (e.g., quay.io/user/app)
      * @param version      - Image tag/version
      */
     void run(String dockerCredId, String imageName, String version) {
         script.withCredentials([script.usernamePassword(
             credentialsId: dockerCredId,
-            usernameVariable: 'REG_USER',
-            passwordVariable: 'REG_PASS'
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASSWORD'
         )]) {
-            script.sh '''
-                REGISTRY=$(echo ''' + imageName + ''' | awk -F/ '{print $1}')
-                echo "$REG_PASS" | podman login -u "$REG_USER" --password-stdin $REGISTRY
-                podman build -t ''' + imageName + ''':''' + version + ''' .
-                podman push ''' + imageName + ''':''' + version + '''
-            '''
+            script.sh """
+                echo "\$DOCKER_PASSWORD" | docker login -u "\$DOCKER_USER" --password-stdin
+                docker build -t ${imageName}:${version} .
+                docker push ${imageName}:${version}
+            """
         }
     }
 }
