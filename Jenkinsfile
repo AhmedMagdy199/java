@@ -88,29 +88,21 @@ pipeline {
     }
 }
 
-
-        stage('Build & Push Docker Image to Docker Hub') {
+stage('Build & Push Docker Image to Docker Hub') {
     steps {
         container('docker') {
             script {
-                def imageTag = "${IMAGE_NAME}:${IMAGE_VERSION}"
-                def fullImage = "docker.io/ahmedmadara/${imageTag}"
-
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASSWORD'
-                )]) {
-                    sh """
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker build -t ${fullImage} .
-                        docker push ${fullImage}
-                    """
-                }
+                def hubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
+                new org.example.BuildAndPushDocker(this).run(
+                    'dockerhub',
+                    hubImage,
+                    IMAGE_VERSION
+                )
             }
         }
     }
 }
+
 
   stage('Build & Push Docker Image to Nexus') {
     steps {
