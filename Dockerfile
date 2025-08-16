@@ -1,5 +1,5 @@
 # Stage 1: The builder stage
-FROM maven:3.9.6-openjdk-11 AS build
+FROM maven:3.9-openjdk-11 AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline
