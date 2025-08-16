@@ -14,8 +14,6 @@ pipeline {
         IMAGE_REPO    = '192.168.1.22:31564/my-repo'
         IMAGE_NAME    = 'maven-sonar-cli'
         IMAGE_VERSION = '1.4'
-        JAVA_HOME     = '/usr/lib/jvm/java-17-openjdk' // Adjust to your container's JDK path
-        PATH         = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
     stages {
@@ -24,7 +22,9 @@ pipeline {
             steps {
                 container('maven') { 
                     script {
-                        new BuildJavaApp(this).run('false') // Run tests
+                        echo "=== Java Environment ==="
+                        sh 'java -version && javac -version'
+                        new BuildJavaApp(this).run('false') // run tests
                     }
                 }
             }
@@ -34,13 +34,8 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        // Force Java 17 for SonarScanner
-                        withEnv([
-                            "JAVA_HOME=${env.JAVA_HOME}",
-                            "PATH=${env.JAVA_HOME}/bin:${env.PATH}"
-                        ]) {
-                            new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
-                        }
+                        // Run analysis on your existing SonarQube pod
+                        new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
                     }
                 }
             }
@@ -56,7 +51,7 @@ pipeline {
 
         stage('Build & Push Docker Image') {
             steps {
-                container('docker') { // Ensure Docker socket is mounted
+                container('docker') {
                     script {
                         new BuildAndPushDocker(this).run(
                             'nexus-docker-cred',
@@ -98,7 +93,7 @@ pipeline {
             script {
                 new SlackNotifier(this).notify(
                     "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    'slack-token' // pass credential ID, not variable
+                    'slack-token'
                 )
             }
         }
