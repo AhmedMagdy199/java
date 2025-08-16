@@ -41,18 +41,10 @@ pipeline {
 
 stage('SonarQube Analysis') {
     steps {
-        container('maven') {
+        container('sonar-scanner') { // Use a container with sonar-scanner installed
             script {
-                echo "=== Running SonarQube Analysis via Maven Plugin ==="
-                withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'TOKEN')]) {
-                    sh """
-                        mvn clean verify sonar:sonar \\
-                          -Dsonar.projectKey=${PROJECT_KEY} \\
-                          -Dsonar.host.url=http://192.168.1.22:31000 \\
-                          -Dsonar.token=$TOKEN \\
-                          -Dsonar.java.binaries=target/classes
-                    """
-                }
+                echo "=== Running SonarQube Analysis ==="
+                new SonarQube(this).run(PROJECT_KEY, PROJECT_NAME, SONAR_TOKEN)
             }
         }
     }
