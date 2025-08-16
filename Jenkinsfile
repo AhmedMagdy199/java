@@ -12,7 +12,6 @@ pipeline {
     environment {
         IMAGE_NAME = 'ahmedmadara/java-app'
         IMAGE_VERSION = "${BUILD_NUMBER}"
-        SONAR_TOKEN = 'sonarqube-token'
     }
 
     stages {
@@ -38,7 +37,9 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        new SonarQube(this).run('java-app', 'Java App', SONAR_TOKEN)
+                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_LOGIN')]) {
+                            new SonarQube(this).run('java-app', 'Java App', SONAR_LOGIN)
+                        }
                     }
                 }
             }
@@ -90,10 +91,10 @@ pipeline {
         }
         failure {
             script {
-                withCredentials([string(credentialsId: 'slack-token', variable: 'slackTokenId')]) {
+                withCredentials([string(credentialsId: 'slack-token', variable: 'slackToken')]) {
                     new SlackNotifier(this).notify(
                         "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                        "${slackTokenId}"
+                        "${slackToken}"
                     )
                 }
             }
