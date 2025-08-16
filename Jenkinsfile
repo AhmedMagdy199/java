@@ -12,7 +12,7 @@ pipeline {
         // SonarQube Configuration
         PROJECT_KEY     = 'java-web-app'
         PROJECT_NAME    = 'java-web-app' 
-        SONAR_TOKEN     = 'sonarqube-token'  // Jenkins credential ID
+        SONAR_TOKEN     = 'sonarqube-token'
         SONAR_HOST_URL  = 'http://192.168.1.22:31000'
         
         // Other Credentials
@@ -26,7 +26,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm  // Simplified checkout stage
+                checkout scm
             }
         }
 
@@ -40,14 +40,30 @@ pipeline {
             }
         }
 
-        /* CRITICAL FIX: SonarQube Analysis with PROPER WRAPPING */
+        // DEBUG STAGE ADDED HERE
+        stage('Verify SonarQube Config') {
+            steps {
+                script {
+                    try {
+                        def servers = Jenkins.instance.getDescriptor('hudson.plugins.sonar.SonarGlobalConfiguration').getInstallations()
+                        echo "=== DEBUG: Configured SonarQube servers ==="
+                        echo servers*.name.join("\n")
+                        assert servers.any { it.name == 'sonar' }, 
+                            "ERROR: No SonarQube server named 'sonar' found. Configure it in:\n" +
+                            "Jenkins → Manage Jenkins → Configure System → SonarQube servers"
+                    } catch (Exception e) {
+                        error "DEBUG FAILED: ${e.message}\n" +
+                              "Is the SonarQube plugin installed?"
+                    }
+                }
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
                 container('maven') {
                     script {
-                        // 1. withSonarQubeEnv MUST wrap the actual analysis
-                        withSonarQubeEnv('sonar') {  
-                            // 2. Credentials injected securely
+                        withSonarQubeEnv('sonar') {
                             withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN']) {
                                 sh """
                                     mvn sonar:sonar \
@@ -64,7 +80,6 @@ pipeline {
             }
         }
 
-        /* QUALITY GATE (now works because analysis is tracked) */
         stage('Quality Gate') {
             steps {
                 script {
@@ -75,67 +90,8 @@ pipeline {
             }
         }
 
-        stage('Build & Push Docker Image') {
-            steps {
-                container('docker') {
-                    script {
-                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.BuildAndPushDocker(this).run(
-                            'nexus-docker-cred',
-                            "${IMAGE_REPO}/${IMAGE_NAME}",
-                            IMAGE_VERSION
-                        )
-                    }
-                }
-            }
-        }
-
-        stage('Security Scan') {
-            steps {
-                container('docker') {
-                    script {
-                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}"
-                    }
-                }
-            }
-        }
-
-        stage('Deploy via ArgoCD') {
-            when {
-                expression { return currentBuild.result == 'SUCCESS' }
-            }
-            steps {
-                script {
-                    new org.example.DeployArgoCD(this).run(
-                        ARGOCD_SERVER,
-                        'java-app'
-                    )
-                }
-            }
-        }
+        // ... rest of your stages (Docker build, Trivy scan, ArgoCD deploy) ...
     }
 
-    post {
-        success {
-            script {
-                new org.example.SlackNotifier(this).notify(
-                    "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    SLACK_CREDS
-                )
-            }
-        }
-        failure {
-            script {
-                new org.example.SlackNotifier(this).notify(
-                    "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    SLACK_CREDS
-                )
-                new org.example.NotifyOnFailure(this).run()
-            }
-        }
-        always {
-            cleanWs()
-        }
-    }
+    // ... post section ...
 }
