@@ -8,6 +8,7 @@ class VMInfo implements Serializable {
     }
 
     void run() {
+        // Checkout source code
         script.echo "Checking out source code..."
         script.checkout script.scm
 
