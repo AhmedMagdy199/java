@@ -30,26 +30,24 @@ pipeline {
             }
         }
 
-        stage('Setup Environment') {
+   stage('Setup Environment') {
     steps {
         container('maven') {
             script {
-                // Get tool installations
-                def javaHome = tool name: 'java-17'
+                // Use the container's existing Java installation
+                def javaHome = '/opt/java/openjdk'  // ← Point to directory containing 'bin'
                 def mavenHome = tool name: 'maven'
                 
-                // Set environment variables
                 withEnv([
                     "JAVA_HOME=${javaHome}",
                     "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
                 ]) {
                     sh '''
                         echo "=== Environment Verification ==="
+                        echo "JAVA_HOME: $JAVA_HOME"
                         echo "Java: $(which java)"
-                        echo "Java version:"
                         java -version
                         echo "Maven: $(which mvn)"
-                        echo "Maven version:"
                         mvn --version
                     '''
                 }
