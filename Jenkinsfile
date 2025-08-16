@@ -11,15 +11,14 @@ pipeline {
     agent { label 'java-app' }
 
     environment {
-        // Centralized variables for easy management
         IMAGE_REPO      = '192.168.1.22:31564/my-repo'
         IMAGE_NAME      = 'java-web-app' 
         IMAGE_VERSION   = "${env.BUILD_NUMBER}"
-        PROJECT_KEY     = 'java-web-app' // Must match the SonarQube project key
+        PROJECT_KEY     = 'java-web-app'
         PROJECT_NAME    = 'java-web-app' 
-        SONAR_TOKEN     = 'sonarqube-token' // Jenkins credential ID for SonarQube token
-        ARGO_CREDS      = 'argocdCred' // Jenkins credential ID for ArgoCD
-        SLACK_CREDS     = 'slack-token' // Jenkins credential ID for Slack
+        SONAR_TOKEN     = 'sonarqube-token' 
+        ARGO_CREDS      = 'argocdCred'
+        SLACK_CREDS     = 'slack-token'
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
     }
@@ -29,42 +28,45 @@ pipeline {
         stage('Checkout & Build Java') {
             steps {
                 container('maven') {
-                    // Checkout the source code from your public GitHub repository
                     git url: "${GITHUB_URL}"
                     script {
                         echo "=== Building Java Application ==="
-                        // Assumes BuildJavaApp will run `mvn clean package`
                         new BuildJavaApp(this).run('false') 
                     }
                 }
             }
         }
-        
+
         //--------------------------------------------------------------------------------------------------
 
         stage('SonarQube Analysis') {
-    steps {
-        container('maven') {
-            script {
-                echo "=== Running SonarQube Analysis via Maven Plugin ==="
-                // This command runs the SonarQube analysis as part of the Maven build
-                sh "mvn clean verify sonar:sonar -Dsonar.projectKey=${PROJECT_KEY} -Dsonar.host.url=http://192.168.1.22:31000 -Dsonar.login=${SONAR_TOKEN}"
+            steps {
+                container('maven') {
+                    script {
+                        echo "=== Running SonarQube Analysis via Maven Plugin ==="
+                        sh """
+                            mvn clean verify sonar:sonar \
+                              -Dsonar.projectKey=${PROJECT_KEY} \
+                              -Dsonar.host.url=http://192.168.1.22:31000 \
+                              -Dsonar.login=${SONAR_TOKEN} \
+                              -Dsonar.java.binaries=target/classes
+                        """
+                    }
+                }
             }
-        }
-    }
-}  
+        }  
+
         //--------------------------------------------------------------------------------------------------
 
         stage('Quality Gate') {
             steps {
                 script {
                     echo "=== Checking SonarQube Quality Gate ==="
-                    // Poll SonarQube for the Quality Gate status
                     new QualityGate(this).run()
                 }
             }
         }
-        
+
         //--------------------------------------------------------------------------------------------------
 
         stage('Build & Push Docker Image') {
@@ -73,16 +75,12 @@ pipeline {
                     script {
                         echo "=== Building and Pushing Docker Image ==="
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        // Build Docker image from the application artifact and push to the registry
-                        new BuildAndPushDocker(this).run(
-                            'nexus-docker-cred',
-                            tag
-                        )
+                        new BuildAndPushDocker(this).run('nexus-docker-cred', tag)
                     }
                 }
             }
         }
-        
+
         //--------------------------------------------------------------------------------------------------
 
         stage('OWASP Trivy Scan') {
@@ -91,24 +89,21 @@ pipeline {
                     script {
                         echo "=== Scanning Docker Image for Vulnerabilities ==="
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        // Scan the pushed image and fail the pipeline on high/critical issues
                         sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}"
                     }
                 }
             }
         }
-        
+
         //--------------------------------------------------------------------------------------------------
 
         stage('Deploy via ArgoCD') {
             when {
-                // Ensure this stage only runs if the build and security checks were successful
                 expression { return currentBuild.result == 'SUCCESS' }
             }
             steps {
                 script {
                     echo "=== Deploying to Kubernetes via ArgoCD ==="
-                    // Update the GitOps repository to trigger an ArgoCD sync
                     new ArgoCDDeploy(this).run(
                         GITHUB_URL,
                         K8S_YAML_PATH,
@@ -120,7 +115,7 @@ pipeline {
             }
         }
     }
-    
+
     //--------------------------------------------------------------------------------------------------
 
     post {
@@ -141,7 +136,6 @@ pipeline {
             }
         }
         always {
-            // Clean up the Jenkins workspace after every build
             cleanWs()
         }
     }
