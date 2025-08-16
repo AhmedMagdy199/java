@@ -15,7 +15,7 @@ pipeline {
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
         ARGOCD_SERVER   = '192.168.1.12:31360'
-        SONAR_HOST_URL  = 'http://192.168.1.22:31000'  // Added explicit SonarQube URL
+        SONAR_HOST_URL  = 'http://192.168.1.22:31000'
     }
 
     stages {
@@ -29,7 +29,6 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        // Initialize tools and environment
                         def javaHome = tool name: 'java-17'
                         def mavenHome = tool name: 'maven'
                         
@@ -63,15 +62,17 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
-                            sh """
-                                mvn sonar:sonar \
-                                  -Dsonar.projectKey=${PROJECT_KEY} \
-                                  -Dsonar.projectName=${PROJECT_NAME} \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.login=${SONAR_AUTH_TOKEN} \
-                                  -Dsonar.java.binaries=target/classes
-                            """
+                        withSonarQubeEnv('sonar') {
+                            withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN']) {
+                                sh """
+                                    mvn sonar:sonar \
+                                      -Dsonar.projectKey=${PROJECT_KEY} \
+                                      -Dsonar.projectName=${PROJECT_NAME} \
+                                      -Dsonar.host.url=${SONAR_HOST_URL} \
+                                      -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                                      -Dsonar.java.binaries=target/classes
+                                """
+                            }
                         }
                     }
                 }
@@ -93,7 +94,7 @@ pipeline {
                 container('docker') {
                     script {
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.BuildAndPushDocker(this).run(
+                        new org.example.DockerBuildPush(this).run(
                             'nexus-docker-cred',
                             "${IMAGE_REPO}/${IMAGE_NAME}",
                             IMAGE_VERSION
