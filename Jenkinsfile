@@ -66,28 +66,26 @@ pipeline {
             }
         }
 
-      stage('Verify SonarQube Config') {
-    steps {
-        script {
-            try {
-                // Safe alternative to check SonarQube configuration
-                def config = configFileProvider([
-                    configFile(fileId: 'sonarqube-config', variable: 'SONAR_CONFIG')
-                ]) {
-                    readFile(SONAR_CONFIG)
+       stage('Verify SonarQube') {
+            steps {
+                script {
+                    try {
+                        // Safe verification using withSonarQubeEnv
+                        withSonarQubeEnv('sonar') {
+                            echo "✓ SonarQube server 'sonar' is properly configured"
+                        }
+                    } catch (Exception e) {
+                        error """
+                            SonarQube configuration missing!
+                            Please configure at:
+                            Jenkins → Manage Jenkins → Configure System → SonarQube servers
+                            Required: Name='sonar', URL='${SONAR_HOST_URL}'
+                            Error: ${e.message}
+                        """
+                    }
                 }
-                
-                echo "✓ SonarQube configuration verified"
-            } catch (Exception e) {
-                error """
-                    SonarQube configuration missing!
-                    Configure at: Jenkins → Manage Jenkins → Configure System → SonarQube servers
-                    Error: ${e.message}
-                """
             }
         }
-    }
-}
 
         stage('SonarQube Analysis') {
             steps {
