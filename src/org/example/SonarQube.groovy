@@ -5,8 +5,8 @@ class SonarQube implements Serializable {
 
     SonarQube(def script) { this.script = script }
 
-    void run(String projectKey, String projectName, String sonarToken) {
-        script.withCredentials([script.string(credentialsId: sonarToken, variable: 'SONAR_TOKEN')]) {
+    void run(String projectKey, String projectName, String sonarTokenCredentialId) {
+        script.withCredentials([script.string(credentialsId: sonarTokenCredentialId, variable: 'SONAR_TOKEN')]) {
             script.sh """
                 sonar-scanner \
                 -Dsonar.projectKey=${projectKey} \
