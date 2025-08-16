@@ -22,8 +22,24 @@ pipeline {
             steps {
                 container('maven') { 
                     script {
+                        // Ensure we use correct JDK
+                        sh 'java -version'
+                        sh 'which java'
                         new BuildJavaApp(this).run('false') // Run tests
                     }
+                }
+            }
+        }
+
+        stage('Debug Java Environment') {
+            steps {
+                container('maven') {
+                    sh '''
+                        echo "=== Java Environment ==="
+                        java -version
+                        javac -version
+                        echo "========================"
+                    '''
                 }
             }
         }
@@ -90,7 +106,7 @@ pipeline {
             script {
                 new SlackNotifier(this).notify(
                     "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    'slack-token' // pass credential ID, not variable
+                    'slack-token'
                 )
             }
         }
