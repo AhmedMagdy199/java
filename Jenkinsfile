@@ -4,23 +4,18 @@ pipeline {
     agent { label 'java-app' }
 
     environment {
-        // Project Configuration
         IMAGE_REPO      = '192.168.1.22:31564/my-repo'
         IMAGE_NAME      = 'java-web-app' 
         IMAGE_VERSION   = "${env.BUILD_NUMBER}"
-        
-        // SonarQube Configuration
         PROJECT_KEY     = 'java-web-app'
         PROJECT_NAME    = 'java-web-app' 
         SONAR_TOKEN     = 'sonarqube-token'
-        SONAR_HOST_URL  = 'http://192.168.1.22:31000'
-        
-        // Other Credentials
         ARGO_CREDS      = 'argocdCred'
         SLACK_CREDS     = 'slack-token'
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
         ARGOCD_SERVER   = '192.168.1.12:31360'
+        SONAR_HOST_URL  = 'http://192.168.1.22:31000'  // Added explicit SonarQube URL
     }
 
     stages {
@@ -30,31 +25,29 @@ pipeline {
             }
         }
 
-   stage('Setup Environment') {
-    steps {
-        container('maven') {
-            script {
-                // Use the container's existing Java installation
-                def javaHome = '/opt/java/openjdk'  // ← Point to directory containing 'bin'
-                def mavenHome = tool name: 'maven'
-                
-                withEnv([
-                    "JAVA_HOME=${javaHome}",
-                    "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
-                ]) {
-                    sh '''
-                        echo "=== Environment Verification ==="
-                        echo "JAVA_HOME: $JAVA_HOME"
-                        echo "Java: $(which java)"
-                        java -version
-                        echo "Maven: $(which mvn)"
-                        mvn --version
-                    '''
+        stage('Setup Environment') {
+            steps {
+                container('maven') {
+                    script {
+                        // Initialize tools and environment
+                        def javaHome = tool name: 'java-17'
+                        def mavenHome = tool name: 'maven'
+                        
+                        withEnv([
+                            "JAVA_HOME=${javaHome}",
+                            "M2_HOME=${mavenHome}",
+                            "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
+                        ]) {
+                            sh '''
+                                echo "Environment Setup Complete"
+                                echo "Java: $(java -version 2>&1 | head -n 1)"
+                                echo "Maven: $(mvn -version | head -n 1)"
+                            '''
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
         stage('Build') {
             steps {
@@ -66,56 +59,19 @@ pipeline {
             }
         }
 
-      stage('Verify SonarQube Connection') {
-    steps {
-        script {
-            // First verify basic connectivity
-            try {
-                def response = sh(
-                    script: "curl -sSf ${SONAR_HOST_URL}/api/server/version",
-                    returnStdout: true
-                ).trim()
-                echo "✓ Connected to SonarQube ${response}"
-            } catch (Exception e) {
-                error "Cannot connect to SonarQube at ${SONAR_HOST_URL}"
-            }
-
-            // Then verify Jenkins configuration
-            try {
-                withSonarQubeEnv('sonar') {
-                    echo "✓ Jenkins-SonarQube integration configured properly"
-                }
-            } catch (Exception e) {
-                error """
-                    Jenkins SonarQube configuration missing!
-                    Please configure at:
-                    Jenkins → Manage Jenkins → Configure System → SonarQube servers
-                    Required settings:
-                    - Name: sonar (case-sensitive)
-                    - URL: ${SONAR_HOST_URL}
-                    - Credentials: sonarqube-token
-                """
-            }
-        }
-    }
-}
-
         stage('SonarQube Analysis') {
             steps {
                 container('maven') {
                     script {
-                        withSonarQubeEnv('sonar') {
-                            withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
-                                sh """
-                                    echo "=== Starting SonarQube Analysis ==="
-                                    mvn sonar:sonar \
-                                      -Dsonar.projectKey=${PROJECT_KEY} \
-                                      -Dsonar.projectName=${PROJECT_NAME} \
-                                      -Dsonar.host.url=${SONAR_HOST_URL} \
-                                      -Dsonar.login=${SONAR_AUTH_TOKEN} \
-                                      -Dsonar.java.binaries=target/classes
-                                """
-                            }
+                        withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
+                            sh """
+                                mvn sonar:sonar \
+                                  -Dsonar.projectKey=${PROJECT_KEY} \
+                                  -Dsonar.projectName=${PROJECT_NAME} \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                                  -Dsonar.java.binaries=target/classes
+                            """
                         }
                     }
                 }
@@ -137,7 +93,7 @@ pipeline {
                 container('docker') {
                     script {
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.BuildAndPushDocker(this).run(
+                        new org.example.DockerBuildPush(this).run(
                             'nexus-docker-cred',
                             "${IMAGE_REPO}/${IMAGE_NAME}",
                             IMAGE_VERSION
@@ -152,10 +108,7 @@ pipeline {
                 container('docker') {
                     script {
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        sh """
-                            echo "=== Running Trivy Scan ==="
-                            trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}
-                        """
+                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}"
                     }
                 }
             }
