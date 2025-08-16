@@ -112,7 +112,7 @@ pipeline {
     }
 }
 
-        stage('Build & Push Docker Image to Nexus') {
+  stage('Build & Push Docker Image to Nexus') {
     steps {
         container('docker') {
             script {
@@ -129,6 +129,7 @@ pipeline {
         }
     }
 }
+
 
       stage('Security Scan') {
     steps {
