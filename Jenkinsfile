@@ -60,23 +60,25 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                container('maven') {
-                    script {
-                        withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
-                            sh """
-                                mvn sonar:sonar \
-                                  -Dsonar.projectKey=${PROJECT_KEY} \
-                                  -Dsonar.projectName=${PROJECT_NAME} \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.login=${SONAR_AUTH_TOKEN} \
-                                  -Dsonar.java.binaries=target/classes
-                            """
-                        }
+    steps {
+        container('maven') {
+            script {
+                withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
+                    withSonarQubeEnv('sonarqube') {  // <-- Use the exact Jenkins server name
+                        sh """
+                            mvn sonar:sonar \
+                              -Dsonar.projectKey=${PROJECT_KEY} \
+                              -Dsonar.projectName=${PROJECT_NAME} \
+                              -Dsonar.host.url=${SONAR_HOST_URL} \
+                              -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                              -Dsonar.java.binaries=target/classes
+                        """
                     }
                 }
             }
         }
+    }
+}
 
         stage('Quality Gate') {
             steps {
