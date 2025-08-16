@@ -15,7 +15,7 @@ pipeline {
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
         ARGOCD_SERVER   = '192.168.1.12:31360'
-        MAVEN_OPTS      = '-Dmaven.repo.local=/home/jenkins/.m2/repository'
+        SONAR_HOST_URL  = 'http://192.168.1.22:31000'  // Added explicit SonarQube URL
     }
 
     stages {
@@ -63,12 +63,15 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        withSonarQubeEnv('sonar') {
-                            new org.example.SonarQube(this).run(
-                                PROJECT_KEY,
-                                PROJECT_NAME,
-                                SONAR_TOKEN
-                            )
+                        withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
+                            sh """
+                                mvn sonar:sonar \
+                                  -Dsonar.projectKey=${PROJECT_KEY} \
+                                  -Dsonar.projectName=${PROJECT_NAME} \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                                  -Dsonar.java.binaries=target/classes
+                            """
                         }
                     }
                 }
@@ -79,7 +82,7 @@ pipeline {
             steps {
                 script {
                     timeout(time: 10, unit: 'MINUTES') {
-                        new org.example.QualityGate(this).run()
+                        waitForQualityGate abortPipeline: true
                     }
                 }
             }
