@@ -90,7 +90,7 @@ pipeline {
         }
         failure {
             script {
-                withCredentials([string(credentialsId: 'slack-token-id', variable: 'slackTokenId')]) {
+                withCredentials([string(credentialsId: 'slack-token', variable: 'slackTokenId')]) {
                     new SlackNotifier(this).notify(
                         "Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                         "${slackTokenId}"
