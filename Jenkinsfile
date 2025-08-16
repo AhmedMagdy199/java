@@ -63,7 +63,8 @@ pipeline {
                 container('maven') {
                     script {
                         withSonarQubeEnv('sonar') {
-                            withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN']) {
+                             withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'SONAR_AUTH_TOKEN')]) {
+
                                 sh """
                                     mvn sonar:sonar \
                                       -Dsonar.projectKey=${PROJECT_KEY} \
