@@ -120,7 +120,7 @@ pipeline {
                 def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
 
                 // Use the DockerBuildPush class
-                new org.example.DockerBuildPush(this).run(
+                new org.example.BuildAndPushDocker(this).run(
                     'nexus-docker-cred', // Jenkins credentials for Nexus
                     nexusImage,
                     IMAGE_VERSION
