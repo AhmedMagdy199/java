@@ -66,23 +66,28 @@ pipeline {
             }
         }
 
-        stage('Verify SonarQube Config') {
-            steps {
-                script {
-                    try {
-                        def servers = Jenkins.instance.getDescriptor('hudson.plugins.sonar.SonarGlobalConfiguration').getInstallations()
-                        echo "=== SonarQube Server Configuration ==="
-                        echo "Available servers: ${servers*.name}"
-                        assert servers.any { it.name == 'sonar' }, 
-                            "ERROR: Missing SonarQube server 'sonar'.\n" +
-                            "Configure at: Jenkins → Manage Jenkins → Configure System → SonarQube servers"
-                        echo "✓ Valid SonarQube configuration found"
-                    } catch (Exception e) {
-                        error "CONFIGURATION ERROR: ${e.message}"
-                    }
+      stage('Verify SonarQube Config') {
+    steps {
+        script {
+            try {
+                // Safe alternative to check SonarQube configuration
+                def config = configFileProvider([
+                    configFile(fileId: 'sonarqube-config', variable: 'SONAR_CONFIG')
+                ]) {
+                    readFile(SONAR_CONFIG)
                 }
+                
+                echo "✓ SonarQube configuration verified"
+            } catch (Exception e) {
+                error """
+                    SonarQube configuration missing!
+                    Configure at: Jenkins → Manage Jenkins → Configure System → SonarQube servers
+                    Error: ${e.message}
+                """
             }
         }
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
