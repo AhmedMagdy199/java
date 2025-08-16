@@ -37,9 +37,9 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_LOGIN')]) {
-                            new SonarQube(this).run('java-app', 'Java App', SONAR_LOGIN)
-                        }
+                        // FIX: Pass the credential ID directly to the shared library class.
+                        // Your shared library's `withCredentials` block expects a credential ID.
+                        new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
                     }
                 }
             }
