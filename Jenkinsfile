@@ -83,9 +83,10 @@ stage('Build & Push Docker Image to Docker Hub') {
     steps {
         container('docker') {
             script {
-                def hubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
-                new org.example.BuildAndPushDocker(this).run(
-                    '5ba0c530-1d43-4d52-b28c-03b368f8fb73',
+                // Only repository name, no tag
+                def hubImage = "docker.io/ahmedmadara/${IMAGE_NAME}"
+                new org.example.DockerBuildPush(this).run(
+                    '5ba0c530-1d43-4d52-b28c-03b368f8fb73', // Docker Hub credentials
                     hubImage,
                     IMAGE_VERSION
                 )
@@ -94,15 +95,13 @@ stage('Build & Push Docker Image to Docker Hub') {
     }
 }
 
-
 stage('Build & Push Docker Image to Nexus') {
     steps {
         container('docker') {
             script {
-                def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-
-                new org.example.BuildAndPushDocker(this).run(
-                    'nexus-docker-cred', // Jenkins credentials for Nexus
+                def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}"
+                new org.example.DockerBuildPush(this).run(
+                    'nexus-docker-cred',
                     nexusImage,
                     IMAGE_VERSION
                 )
