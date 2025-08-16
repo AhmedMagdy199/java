@@ -104,14 +104,12 @@ stage('Build & Push Docker Image to Docker Hub') {
 }
 
 
-  stage('Build & Push Docker Image to Nexus') {
+stage('Build & Push Docker Image to Nexus') {
     steps {
         container('docker') {
             script {
-                // Full image name including Nexus registry
                 def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
 
-                // Use the DockerBuildPush class
                 new org.example.BuildAndPushDocker(this).run(
                     'nexus-docker-cred', // Jenkins credentials for Nexus
                     nexusImage,
