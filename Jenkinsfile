@@ -41,10 +41,26 @@ pipeline {
 
 stage('SonarQube Analysis') {
     steps {
-        container('sonar-scanner') { // Use a container with sonar-scanner installed
+        container('maven') {  // Use existing maven container
             script {
                 echo "=== Running SonarQube Analysis ==="
-                new SonarQube(this).run(PROJECT_KEY, PROJECT_NAME, SONAR_TOKEN)
+                withCredentials([string(credentialsId: SONAR_TOKEN, variable: 'TOKEN')]) {
+                    sh """
+                        # Install sonar-scanner if needed
+                        if ! command -v sonar-scanner &> /dev/null; then
+                            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
+                            unzip sonar-scanner-cli-4.7.0.2747-linux.zip
+                            export PATH=$PATH:$(pwd)/sonar-scanner-4.7.0.2747-linux/bin
+                        fi
+                        
+                        sonar-scanner \
+                          -Dsonar.projectKey=${PROJECT_KEY} \
+                          -Dsonar.projectName="${PROJECT_NAME}" \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=http://192.168.1.22:31000 \
+                          -Dsonar.login=$TOKEN
+                    """
+                }
             }
         }
     }
