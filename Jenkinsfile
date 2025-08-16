@@ -66,26 +66,39 @@ pipeline {
             }
         }
 
-       stage('Verify SonarQube') {
-            steps {
-                script {
-                    try {
-                        // Safe verification using withSonarQubeEnv
-                        withSonarQubeEnv('sonar') {
-                            echo "✓ SonarQube server 'sonar' is properly configured"
-                        }
-                    } catch (Exception e) {
-                        error """
-                            SonarQube configuration missing!
-                            Please configure at:
-                            Jenkins → Manage Jenkins → Configure System → SonarQube servers
-                            Required: Name='sonar', URL='${SONAR_HOST_URL}'
-                            Error: ${e.message}
-                        """
-                    }
+      stage('Verify SonarQube Connection') {
+    steps {
+        script {
+            // First verify basic connectivity
+            try {
+                def response = sh(
+                    script: "curl -sSf ${SONAR_HOST_URL}/api/server/version",
+                    returnStdout: true
+                ).trim()
+                echo "✓ Connected to SonarQube ${response}"
+            } catch (Exception e) {
+                error "Cannot connect to SonarQube at ${SONAR_HOST_URL}"
+            }
+
+            // Then verify Jenkins configuration
+            try {
+                withSonarQubeEnv('sonar') {
+                    echo "✓ Jenkins-SonarQube integration configured properly"
                 }
+            } catch (Exception e) {
+                error """
+                    Jenkins SonarQube configuration missing!
+                    Please configure at:
+                    Jenkins → Manage Jenkins → Configure System → SonarQube servers
+                    Required settings:
+                    - Name: sonar (case-sensitive)
+                    - URL: ${SONAR_HOST_URL}
+                    - Credentials: sonarqube-token
+                """
             }
         }
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
