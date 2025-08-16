@@ -48,7 +48,7 @@ pipeline {
                             mvn clean verify sonar:sonar \
                               -Dsonar.projectKey=${PROJECT_KEY} \
                               -Dsonar.host.url=http://192.168.1.22:31000 \
-                              -Dsonar.login=${SONAR_TOKEN} \
+                              -Dsonar.token=${SONAR_TOKEN} \
                               -Dsonar.java.binaries=target/classes
                         """
                     }
