@@ -13,7 +13,7 @@ pipeline {
         // Use your Nexus repository address as the base for all image names
         IMAGE_REPO = '192.168.1.22:31565/my-repo'
         IMAGE_NAME = 'maven-sonar-cli'
-        IMAGE_VERSION = "1.1"
+        IMAGE_VERSION = "1.4"
     }
 
     stages {
