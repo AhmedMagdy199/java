@@ -94,7 +94,7 @@ stage('Build & Push Docker Image to Docker Hub') {
             script {
                 def hubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
                 new org.example.BuildAndPushDocker(this).run(
-                    'dockerhub',
+                    '5ba0c530-1d43-4d52-b28c-03b368f8fb73',
                     hubImage,
                     IMAGE_VERSION
                 )
