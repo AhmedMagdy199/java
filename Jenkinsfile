@@ -50,7 +50,7 @@ pipeline {
             steps {
                 container('docker') { // Ensure Docker socket is mounted
                     script {
-                        new DockerBuildPush(this).run(
+                        new BuildAndPushDocker(this).run(
                             'nexus-docker-cred',
                             "${IMAGE_REPO}/${IMAGE_NAME}",
                             IMAGE_VERSION
