@@ -38,19 +38,23 @@ pipeline {
 
         stage('Build & Push Final Docker Image') {
             steps {
-                script {
-                    // Use the nexus-docker-cred for authentication
-                    new BuildAndPushDocker(this).run('nexus-docker-cred', "${IMAGE_REPO}/${IMAGE_NAME}", IMAGE_VERSION)
+                container('docker') { // This stage must run in the 'docker' container
+                    script {
+                        // Use the nexus-docker-cred for authentication
+                        new BuildAndPushDocker(this).run('nexus-docker-cred', "${IMAGE_REPO}/${IMAGE_NAME}", IMAGE_VERSION)
+                    }
                 }
             }
         }
 
         stage('OWASP Trivy Scan') {
             steps {
-                // Use the correct image path from your Nexus registry
-                sh """
-                    trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}
-                """
+                container('docker') { // This stage must run in the 'docker' container
+                    // Use the correct image path from your Nexus registry
+                    sh """
+                        trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}
+                    """
+                }
             }
         }
 
