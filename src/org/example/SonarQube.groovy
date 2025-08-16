@@ -8,10 +8,7 @@ class SonarQube implements Serializable {
     void run(String projectKey, String projectName, String sonarTokenCredentialId) {
         script.withCredentials([script.string(credentialsId: sonarTokenCredentialId, variable: 'SONAR_TOKEN')]) {
             script.sh """
-                # Ensure using Java 17 from Maven container
-                export JAVA_HOME=/opt/java/openjdk
-                export PATH=\$JAVA_HOME/bin:\$PATH
-
+                # Run SonarScanner with the correct Java environment from the container.
                 sonar-scanner \\
                   -Dsonar.projectKey=${projectKey} \\
                   -Dsonar.projectName="${projectName}" \\
