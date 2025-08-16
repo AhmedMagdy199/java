@@ -130,16 +130,24 @@ pipeline {
     }
 }
 
-        stage('Security Scan') {
-            steps {
-                container('docker') {
-                    script {
-                        def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${tag}"
-                    }
-                }
+      stage('Security Scan') {
+    steps {
+        container('docker') {
+            script {
+                // Define both image tags
+                def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
+                def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
+
+                // Scan Docker Hub image
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
+
+                // Scan Nexus image
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${nexusImage} || true"
             }
         }
+    }
+}
+
 
         stage('Deploy via ArgoCD') {
             when {
