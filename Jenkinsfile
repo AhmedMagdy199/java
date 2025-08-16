@@ -14,6 +14,8 @@ pipeline {
         IMAGE_REPO    = '192.168.1.22:31564/my-repo'
         IMAGE_NAME    = 'maven-sonar-cli'
         IMAGE_VERSION = '1.4'
+        JAVA_HOME     = '/usr/lib/jvm/java-17-openjdk' // Adjust to your container's JDK path
+        PATH         = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
     stages {
@@ -22,24 +24,8 @@ pipeline {
             steps {
                 container('maven') { 
                     script {
-                        // Ensure we use correct JDK
-                        sh 'java -version'
-                        sh 'which java'
                         new BuildJavaApp(this).run('false') // Run tests
                     }
-                }
-            }
-        }
-
-        stage('Debug Java Environment') {
-            steps {
-                container('maven') {
-                    sh '''
-                        echo "=== Java Environment ==="
-                        java -version
-                        javac -version
-                        echo "========================"
-                    '''
                 }
             }
         }
@@ -48,7 +34,13 @@ pipeline {
             steps {
                 container('maven') {
                     script {
-                        new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
+                        // Force Java 17 for SonarScanner
+                        withEnv([
+                            "JAVA_HOME=${env.JAVA_HOME}",
+                            "PATH=${env.JAVA_HOME}/bin:${env.PATH}"
+                        ]) {
+                            new SonarQube(this).run('java-app', 'Java App', 'sonarqube-token')
+                        }
                     }
                 }
             }
@@ -106,7 +98,7 @@ pipeline {
             script {
                 new SlackNotifier(this).notify(
                     "Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    'slack-token'
+                    'slack-token' // pass credential ID, not variable
                 )
             }
         }
