@@ -24,30 +24,21 @@ pipeline {
                 checkout scm
             }
         }
-
-        stage('Setup Environment') {
-            steps {
-                container('maven') {
-                    script {
-                        // Initialize tools and environment
-                        def javaHome = tool name: 'java-17'
-                        def mavenHome = tool name: 'maven'
-                        
-                        withEnv([
-                            "JAVA_HOME=${javaHome}",
-                            "M2_HOME=${mavenHome}",
-                            "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
-                        ]) {
-                            sh '''
-                                echo "Environment Setup Complete"
-                                echo "Java: $(java -version 2>&1 | head -n 1)"
-                                echo "Maven: $(mvn -version | head -n 1)"
-                            '''
-                        }
-                    }
-                }
+        
+stage('Setup Environment') {
+    steps {
+        container('maven') {
+            script {
+                // Environment variables for Maven and Java are already set in this Docker image
+                sh '''
+                    echo "Environment Setup Complete"
+                    echo "Java: $(java -version 2>&1 | head -n 1)"
+                    echo "Maven: $(mvn -version | head -n 1)"
+                '''
             }
         }
+    }
+}
 
         stage('Build') {
             steps {
