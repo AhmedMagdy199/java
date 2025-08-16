@@ -31,26 +31,32 @@ pipeline {
         }
 
         stage('Setup Environment') {
-            steps {
-                container('maven') {
-                    script {
-                        def javaHome = tool name: 'java-17'
-                        def mavenHome = tool name: 'maven'
-                        withEnv([
-                            "JAVA_HOME=${javaHome}",
-                            "M2_HOME=${mavenHome}",
-                            "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
-                        ]) {
-                            sh '''
-                                echo "=== Environment Verification ==="
-                                java -version
-                                mvn -version
-                            '''
-                        }
-                    }
+    steps {
+        container('maven') {
+            script {
+                // Get tool installations
+                def javaHome = tool name: 'java-17'
+                def mavenHome = tool name: 'maven'
+                
+                // Set environment variables
+                withEnv([
+                    "JAVA_HOME=${javaHome}",
+                    "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
+                ]) {
+                    sh '''
+                        echo "=== Environment Verification ==="
+                        echo "Java: $(which java)"
+                        echo "Java version:"
+                        java -version
+                        echo "Maven: $(which mvn)"
+                        echo "Maven version:"
+                        mvn --version
+                    '''
                 }
             }
         }
+    }
+}
 
         stage('Build') {
             steps {
