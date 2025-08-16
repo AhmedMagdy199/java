@@ -80,12 +80,11 @@ pipeline {
     }
 }
 
-      stage('Quality Gate') {
+    stage('Quality Gate') {
     steps {
         script {
             timeout(time: 4, unit: 'MINUTES') {
-                def qg = waitForQualityGate() // no abortPipeline
-                echo "Quality Gate status: ${qg.status}"
+                new org.example.QualityGate(this).run()
             }
         }
     }
