@@ -15,14 +15,44 @@ pipeline {
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
         ARGOCD_SERVER   = '192.168.1.12:31360'
+        MAVEN_OPTS      = '-Dmaven.repo.local=/home/jenkins/.m2/repository'
     }
 
     stages {
-        stage('Checkout & Build') {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup Environment') {
             steps {
                 container('maven') {
                     script {
-                        new org.example.VMInfo(this).run()
+                        // Initialize tools and environment
+                        def javaHome = tool name: 'java-17'
+                        def mavenHome = tool name: 'maven'
+                        
+                        withEnv([
+                            "JAVA_HOME=${javaHome}",
+                            "M2_HOME=${mavenHome}",
+                            "PATH=${javaHome}/bin:${mavenHome}/bin:${env.PATH}"
+                        ]) {
+                            sh '''
+                                echo "Environment Setup Complete"
+                                echo "Java: $(java -version 2>&1 | head -n 1)"
+                                echo "Maven: $(mvn -version | head -n 1)"
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                container('maven') {
+                    script {
                         new org.example.BuildJavaApp(this).run('false')
                     }
                 }
@@ -48,7 +78,9 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
-                    new org.example.QualityGate(this).run()
+                    timeout(time: 10, unit: 'MINUTES') {
+                        new org.example.QualityGate(this).run()
+                    }
                 }
             }
         }
@@ -58,7 +90,7 @@ pipeline {
                 container('docker') {
                     script {
                         def tag = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-                        new org.example.BuildAndPushDocker(this).run(
+                        new org.example.DockerBuildPush(this).run(
                             'nexus-docker-cred',
                             "${IMAGE_REPO}/${IMAGE_NAME}",
                             IMAGE_VERSION
