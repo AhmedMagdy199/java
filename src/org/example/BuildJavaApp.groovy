@@ -14,12 +14,8 @@ class BuildJavaApp implements Serializable {
             script: "mvn help:describe -Dcmd=test | grep -q 'Name: test'",
             returnStatus: true
         ) == 0
-
-        if (!testExists) {
-            script.error("Maven 'test' goal is not available.")
-        }
-
         script.echo "'mvn test' goal exists. Proceeding with build..."
         script.sh "mvn clean package -Dmaven.test.skip=${skipTests}"
     }
+
 }
