@@ -99,13 +99,11 @@ stage('Build & Push Docker Image to Nexus') {
     steps {
         container('docker') {
             script {
-                def nexusRegistry = "http://192.168.1.22:31564/"
-                def nexusImage = "${nexusRegistry}/java-web-app"    
-                new org.example.DockerBuildPush(this).run(
+                def nexusImage = "192.168.1.22:31564/java-web-app"
+                new org.example.NexusDockerPush(this).run(
                     'nexus-docker-cred',
                     nexusImage,
-                    IMAGE_VERSION,
-                    nexusRegistry
+                    env.BUILD_NUMBER
                 )
             }
         }
