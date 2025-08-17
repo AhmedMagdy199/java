@@ -99,11 +99,10 @@ stage('Security Scan') {
     steps {
         container('docker') {
             script {
-                // Define the Docker Hub image tag
+                // Use the image tag from your pipeline's environment variables
                 def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
-                
-                // Scan the image directly using the trivy command
-                // Note: The Jenkins agent or container must have the Trivy CLI installed.
+
+                // This command will work IF the 'docker' container has Trivy installed
                 sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
             }
         }
