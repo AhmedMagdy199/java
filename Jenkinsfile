@@ -125,12 +125,12 @@ stage('Security Scan') {
         }
     }
 
-  post {
+ post {
     success {
         script {
             new org.example.SlackNotifier(this).notify(
                 "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                'slack-token1' // Updated credential ID
+                SLACK_CREDS // Use the environment variable
             )
         }
     }
@@ -138,7 +138,7 @@ stage('Security Scan') {
         script {
             new org.example.SlackNotifier(this).notify(
                 "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                'slack-token1' // Updated credential ID
+                SLACK_CREDS // Use the environment variable
             )
             new org.example.NotifyOnFailure(this).run()
         }
