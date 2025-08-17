@@ -14,7 +14,7 @@ pipeline {
         SLACK_CREDS     = 'slack-token1'
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
-        ARGOCD_SERVER   = '192.168.1.12:31360'
+        ARGOCD_SERVER   = '192.168.1.22:31983'
         SONAR_HOST_URL  = 'http://192.168.1.22:31000'
     }
 
