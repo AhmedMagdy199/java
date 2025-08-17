@@ -97,13 +97,15 @@ stage('Build & Push Docker Image to Docker Hub') {
 
 stage('Security Scan') {
     steps {
-        script {
-            // Define the Docker Hub image tag
-            def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
-            
-            // Run Trivy inside its own container
-            docker.image('aquasec/trivy').inside('--entrypoint=""') {
-                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
+        container('docker') {
+            script {
+                // Define the Docker Hub image tag
+                def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
+                
+                // Run Trivy inside its own container
+                docker.image('aquasec/trivy').inside('--entrypoint=""') {
+                    sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
+                }
             }
         }
     }
