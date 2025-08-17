@@ -4,7 +4,7 @@ pipeline {
     agent { label 'java-app' }
 
     environment {
-        IMAGE_REPO      = '192.168.1.22:31564/my-repo'
+        IMAGE_REPO      = '192.168.1.22:31565/my-repo'
         IMAGE_NAME      = 'java-web-app' 
         IMAGE_VERSION   = "${env.BUILD_NUMBER}"
         PROJECT_KEY     = 'java-web-app'
