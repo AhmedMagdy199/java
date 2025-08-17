@@ -11,7 +11,7 @@ pipeline {
         PROJECT_NAME    = 'java-web-app' 
         SONAR_TOKEN     = 'sonarqube-token'
         ARGO_CREDS      = 'argocdCred'
-        SLACK_CREDS     = 'slack-token'
+        SLACK_CREDS     = 'slack-token1'
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
         ARGOCD_SERVER   = '192.168.1.12:31360'
@@ -125,26 +125,26 @@ stage('Security Scan') {
         }
     }
 
-    post {
-        success {
-            script {
-                new org.example.SlackNotifier(this).notify(
-                    "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    SLACK_CREDS
-                )
-            }
-        }
-        failure {
-            script {
-                new org.example.SlackNotifier(this).notify(
-                    "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                    SLACK_CREDS
-                )
-                new org.example.NotifyOnFailure(this).run()
-            }
-        }
-        always {
-            cleanWs()
+  post {
+    success {
+        script {
+            new org.example.SlackNotifier(this).notify(
+                "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                'slack-token1' // Updated credential ID
+            )
         }
     }
+    failure {
+        script {
+            new org.example.SlackNotifier(this).notify(
+                "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                'slack-token1' // Updated credential ID
+            )
+            new org.example.NotifyOnFailure(this).run()
+        }
+    }
+    always {
+        cleanWs()
+    }
+}
 }
