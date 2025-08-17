@@ -15,7 +15,7 @@ class NexusDockerPush implements Serializable {
      * @param version      - Image tag/version
      */
     void run(String dockerCredId, String imageName, String version) {
-        def nexusRegistry = "http://192.168.1.22:31564/"
+        def nexusRegistry = "http://192.168.1.22:31565/"
 
         script.withCredentials([script.usernamePassword(
             credentialsId: dockerCredId,
@@ -29,4 +29,5 @@ class NexusDockerPush implements Serializable {
             """
         }
     }
+
 }
