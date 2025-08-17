@@ -94,20 +94,19 @@ stage('Build & Push Docker Image to Docker Hub') {
         }
     }
 }
-        stage('Deploy via ArgoCD') {
-            when {
-                expression { return currentBuild.result == 'SUCCESS' }
-            }
-            steps {
-                script {
-                    new org.example.DeployArgoCD(this).run(
-                        ARGOCD_SERVER,
-                        'java-app'
-                    )
-                }
-            }
+       stage('Deploy via ArgoCD') {
+    when {
+        expression { return currentBuild.result == 'SUCCESS' || currentBuild.result == 'UNSTABLE' }
+    }
+    steps {
+        script {
+            new org.example.DeployArgoCD(this).run(
+                ARGOCD_SERVER,
+                'java-app'
+            )
         }
     }
+}
 
  post {
     success {
