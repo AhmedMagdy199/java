@@ -9,7 +9,7 @@ class DeployArgoCD implements Serializable {
 
     void run(String argocdServer, String appName) {
         script.withCredentials([script.usernamePassword(
-            credentialsId: 'argocd',
+            credentialsId: 'argocd-git',
             usernameVariable: 'ARGOCD_USER',
             passwordVariable: 'ARGOCD_PASS'
         )]) {
