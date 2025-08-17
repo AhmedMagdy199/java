@@ -95,41 +95,20 @@ stage('Build & Push Docker Image to Docker Hub') {
     }
 }
 
-stage('Build & Push Docker Image to Nexus') {
+
+  stage('Security Scan') {
     steps {
         container('docker') {
             script {
-                def nexusImage = "192.168.1.22:31565/java-web-app"
-                new org.example.NexusDockerPush(this).run(
-                    'nexus-docker-cred',
-                    nexusImage,
-                    env.BUILD_NUMBER
-                )
-            }
-        }
-    }
-}
-
-
-      stage('Security Scan') {
-    steps {
-        container('docker') {
-            script {
-                // Define both image tags
+                // Define the Docker Hub image tag
                 def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
-                def nexusImage = "${IMAGE_REPO}/${IMAGE_NAME}:${IMAGE_VERSION}"
-
+                
                 // Scan Docker Hub image
                 sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
-
-                // Scan Nexus image
-                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${nexusImage} || true"
             }
         }
     }
 }
-
-
         stage('Deploy via ArgoCD') {
             when {
                 expression { return currentBuild.result == 'SUCCESS' }
