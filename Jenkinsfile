@@ -117,6 +117,7 @@ stage('Build & Push Docker Image to Docker Hub') {
             )
         }
     }
+ }
     failure {
         script {
             new org.example.SlackNotifier(this).notify(
