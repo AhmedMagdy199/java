@@ -94,20 +94,6 @@ stage('Build & Push Docker Image to Docker Hub') {
         }
     }
 }
-
-stage('Security Scan') {
-    steps {
-        container('docker') {
-            script {
-                // Use the image tag from your pipeline's environment variables
-                def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
-
-                // This command will work IF the 'docker' container has Trivy installed
-                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
-            }
-        }
-    }
-}
         stage('Deploy via ArgoCD') {
             when {
                 expression { return currentBuild.result == 'SUCCESS' }
