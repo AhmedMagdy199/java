@@ -102,10 +102,9 @@ stage('Security Scan') {
                 // Define the Docker Hub image tag
                 def dockerHubImage = "docker.io/ahmedmadara/${IMAGE_NAME}:${IMAGE_VERSION}"
                 
-                // Run Trivy inside its own container
-                docker.image('aquasec/trivy').inside('--entrypoint=""') {
-                    sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
-                }
+                // Scan the image directly using the trivy command
+                // Note: The Jenkins agent or container must have the Trivy CLI installed.
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL ${dockerHubImage} || true"
             }
         }
     }
