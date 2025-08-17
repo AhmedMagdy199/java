@@ -10,7 +10,7 @@ pipeline {
         PROJECT_KEY     = 'java-web-app'
         PROJECT_NAME    = 'java-web-app'  
         SONAR_TOKEN     = 'sonarqube-token'
-        ARGO_CREDS      = 'argocdCred'
+        ARGO_CREDS      = 'argocd-git'
         SLACK_CREDS     = 'slack-token1'
         GITHUB_URL      = 'https://github.com/AhmedMagdy199/java.git'
         K8S_YAML_PATH   = 'k8s/deployment.yaml'
